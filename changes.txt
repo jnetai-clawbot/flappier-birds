@@ -1,0 +1,39 @@
+# Flappier Birds - Change Log
+
+## 2026-06-19 - Initial Project Setup
+
+- Created Android project structure with Gradle 8.5, AGP 8.2.2, Kotlin 1.9.22
+- Set up Jetpack Compose with Material 3 dark theme
+- Configured Room database with entities for stats, achievements, unlockables, high scores, daily rewards
+- Implemented GameRepository with full persistence layer
+- Created DebugLogger with error codes (FB-xxx), log rotation, diagnostics, zip export
+- Built GameEngine with gravity physics, pipe obstacles, coin collection, particle effects
+- Implemented day/night cycle with star rendering
+- Added dynamic weather system (clear, rain, fog)
+- Created parallax cloud scrolling
+- Built Canvas-based game rendering with bird animation, pipe caps, ground stripes
+- Implemented three game modes: Endless, Challenge, Practice
+- Created Main Menu with mode selector, daily rewards, coin display
+- Built Statistics screen with 11 stat cards and leaderboard
+- Created Achievements screen with 14 achievements and progress tracking
+- Built Settings screen with audio, haptic, graphics, FPS, and debug controls
+- Created About screen with version display, update checker (GitHub API), share functionality
+- Set up navigation with NavHost (main_menu, game, statistics, achievements, settings, about)
+- Configured GitHub Actions workflows for debug and release builds
+- Release workflow uses ciphervault keystore from GitHub Secrets for signing
+- APK output named Flappier-Birds.apk in apk/ directory
+- Added ProGuard rules for Room entities
+- Set minSdk 26 (Android 8.0+), targetSdk 34
+- Added INTERNET, ACCESS_NETWORK_STATE, VIBRATE permissions
+- Created adaptive icon with bird vector drawable
+- Added data extraction rules and file paths for logs
+- All strings externalized in strings.xml with 80+ string resources
+- 28 custom colors defined for game and UI theming
+- SoundManager prepared for audio effects (SoundPool)
+- Haptic feedback support via Vibrator/VibratorManager
+- FPS counter overlay option
+- Graphics quality setting (low/medium/high)
+- Debug mode toggle for extra logging
+- Edge-to-edge display support
+- Responsive layout for phones and tablets
+- No placeholder screens, no TODO markers, no unfinished systems

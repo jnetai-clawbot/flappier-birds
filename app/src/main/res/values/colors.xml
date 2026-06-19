@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background_dark">#FF0D1117</color>
+    <color name="surface_dark">#FF161B22</color>
+    <color name="surface_variant">#FF21262D</color>
+    <color name="primary">#FF58A6FF</color>
+    <color name="primary_variant">#FF388BFD</color>
+    <color name="secondary">#FF3FB950</color>
+    <color name="accent_gold">#FFD29922</color>
+    <color name="accent_orange">#FFDB6D28</color>
+    <color name="accent_red">#FFF85149</color>
+    <color name="accent_purple">#FFA371F7</color>
+    <color name="on_surface">#FFE6EDF3</color>
+    <color name="on_surface_variant">#FF8B949E</color>
+    <color name="sky_day">#FF4A90D9</color>
+    <color name="sky_night">#FF0D1B2A</color>
+    <color name="ground_day">#FF2D5A27</color>
+    <color name="ground_night">#FF1A3316</color>
+    <color name="pipe_day">#FF3FB950</color>
+    <color name="pipe_night">#FF1B5E20</color>
+    <color name="bird_default">#FFFFD700</color>
+    <color name="bird_red">#FFF85149</color>
+    <color name="bird_blue">#FF58A6FF</color>
+    <color name="bird_green">#FF3FB950</color>
+    <color name="bird_purple">#FFA371F7</color>
+    <color name="bird_orange">#FFDB6D28</color>
+    <color name="bird_pink">#FFFF77B5</color>
+    <color name="bird_cyan">#FF39D2C0</color>
+    <color name="bird_white">#FFFFFFFF</color>
+    <color name="coin_color">#FFFFD700</color>
+    <color name="particle_color">#FFFFFFFF</color>
+    <color name="cloud_color">#FFC8D6E5</color>
+    <color name="rain_color">#FF8395A7</color>
+    <color name="fog_color">#FF576574</color>
+</resources>
