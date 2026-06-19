@@ -37,3 +37,15 @@
 - Edge-to-edge display support
 - Responsive layout for phones and tablets
 - No placeholder screens, no TODO markers, no unfinished systems
+
+## 2026-06-19 - Build Fixes
+
+- Fixed LinearProgressIndicator API: changed lambda to direct Float value
+- Fixed Paint.Align.Left -> Paint.Align.LEFT (Kotlin enum casing)
+- Fixed alpha shadowing in drawStartPrompt (val reassignment)
+- Fixed Icons.Default.Infinity -> Icons.Default.AllInclusive (icon name)
+- Added missing clip import in AchievementsScreen
+- Added file-level @OptIn(ExperimentalMaterial3Api::class) for Card onClick
+- Release APK built successfully via GitHub Actions (1.37 MB)
+- APK signed with ciphervault keystore (v2/v3 APK Signing Block)
+- Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.0.0
