@@ -95,3 +95,21 @@
 - Bumped to versionCode 4, versionName 1.2.0
 - Same ciphervault keystore for update compatibility
 - Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.2.0
+
+## 2026-06-19 - v1.3.0 Authentic Flappy Birds Clone
+
+- Bird bobs up/down when idle (before game starts) — classic Flappy Birds behavior
+- Bird positioned at 17% screen width (matches original placement)
+- Physics: gravity=0.6, flap=-9, pipeGap=170, pipeSpeed=2.8 — authentic feel
+- Classic mode: constant speed, constant gap, no level progression ever
+- Forgiving collision box: 15% margin inside visual radius (feels fair)
+- Pipe rendering: body + darker cap + lighter lip (3-layer authentic look)
+- Ground: tan base + green grass strip + darker edge line
+- Sky: light blue #70C5DE with subtle clouds, stars at night
+- Bird: round body, white eye, black pupil, orange beak, animated wing
+- Score centered top, coins top-left
+- Challenge/Practice modes retain weapons and level progression
+- Fixed missing RoundedCornerShape import
+- Bumped to versionCode 5, versionName 1.3.0
+- Same ciphervault keystore for update compatibility
+- Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.3.0
