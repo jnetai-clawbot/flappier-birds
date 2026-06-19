@@ -11,7 +11,7 @@ class GameEngine {
     var birdX = 0f
     var birdY = 0f
     var birdVelocity = 0f
-    var birdRadius = 28f
+    var birdRadius = 24f
     var birdColor = "#FFFFD700"
     var birdRotation = 0f
 
@@ -28,15 +28,15 @@ class GameEngine {
     var gameMode = "endless"
     var initialized = false
 
-    private var gravity = 0.5f
-    private var flapStrength = -9f
-    private var maxVelocity = 14f
-    private var minVelocity = -12f
-    private var pipeWidth = 78f
-    private var pipeGap = 200f
-    private var pipeSpeed = 3.2f
-    private var groundHeight = 100f
-    private val coinRadius = 16f
+    private var gravity = 0.55f
+    private var flapStrength = -8.5f
+    private var maxVelocity = 13f
+    private var minVelocity = -11f
+    private var pipeWidth = 72f
+    private var pipeGap = 180f
+    private var pipeSpeed = 3.0f
+    private var groundHeight = 112f
+    private val coinRadius = 14f
 
     private val pipes = mutableListOf<Pipe>()
     private val coinItems = mutableListOf<CoinItem>()
@@ -45,7 +45,7 @@ class GameEngine {
     private val projectiles = mutableListOf<Projectile>()
 
     private var pipeSpawnTimer = 0f
-    private var pipeSpawnInterval = 100f
+    private var pipeSpawnInterval = 110f
     private var difficultyLevel = 1f
     private var scrollOffset = 0f
     private var level = 1
@@ -54,9 +54,9 @@ class GameEngine {
     var isRaining = false
     var isFoggy = false
     private var dayNightTimer = 0f
-    private val dayNightCycleDuration = 800f
+    private val dayNightCycleDuration = 900f
     private var weatherTimer = 0f
-    private var weatherChangeInterval = 400f
+    private var weatherChangeInterval = 500f
     private var currentWeather = "clear"
 
     var weaponAmmo = 0
@@ -126,22 +126,22 @@ class GameEngine {
     private fun applyModeConfig() {
         when (gameMode) {
             "endless" -> {
-                gravity = 0.5f; flapStrength = -9f; pipeGap = 200f; pipeSpeed = 3.2f
-                pipeSpawnInterval = 100f; weaponType = "none"; weaponAmmo = 0
+                gravity = 0.55f; flapStrength = -8.5f; pipeGap = 180f; pipeSpeed = 3.0f
+                pipeSpawnInterval = 110f; weaponType = "none"; weaponAmmo = 0
             }
             "challenge" -> {
-                gravity = 0.55f; flapStrength = -9.5f; pipeGap = 170f; pipeSpeed = 4.0f
-                pipeSpawnInterval = 85f; weaponType = "laser"; weaponAmmo = 5
+                gravity = 0.6f; flapStrength = -9f; pipeGap = 160f; pipeSpeed = 3.8f
+                pipeSpawnInterval = 90f; weaponType = "laser"; weaponAmmo = 5
             }
             "practice" -> {
-                gravity = 0.4f; flapStrength = -8f; pipeGap = 250f; pipeSpeed = 2.5f
-                pipeSpawnInterval = 120f; weaponType = "none"; weaponAmmo = 0
+                gravity = 0.45f; flapStrength = -7.5f; pipeGap = 230f; pipeSpeed = 2.4f
+                pipeSpawnInterval = 130f; weaponType = "none"; weaponAmmo = 0
             }
         }
     }
 
     fun resetGame() {
-        birdX = screenWidth * 0.22f
+        birdX = screenWidth * 0.2f
         birdY = screenHeight * 0.45f
         birdVelocity = 0f
         birdRotation = 0f
@@ -167,14 +167,14 @@ class GameEngine {
 
     private fun initClouds() {
         clouds.clear()
-        for (i in 0 until 7) {
+        for (i in 0 until 5) {
             clouds.add(Cloud(
                 x = random.nextFloat() * screenWidth,
-                y = 40f + random.nextFloat() * (screenHeight * 0.35f),
-                width = 70f + random.nextFloat() * 140f,
-                height = 25f + random.nextFloat() * 55f,
-                speed = 0.2f + random.nextFloat() * 0.6f,
-                alpha = 0.25f + random.nextFloat() * 0.45f
+                y = 30f + random.nextFloat() * (screenHeight * 0.3f),
+                width = 60f + random.nextFloat() * 100f,
+                height = 20f + random.nextFloat() * 40f,
+                speed = 0.15f + random.nextFloat() * 0.4f,
+                alpha = 0.2f + random.nextFloat() * 0.35f
             ))
         }
     }
@@ -200,12 +200,12 @@ class GameEngine {
             else -> Color.argb(255, 255, 255, 100)
         }
         projectiles.add(Projectile(
-            x = birdX + birdRadius + 10f,
+            x = birdX + birdRadius + 8f,
             y = birdY,
             vx = 12f,
             vy = 0f,
             life = 60f,
-            radius = 8f,
+            radius = 7f,
             color = projColor
         ))
     }
@@ -216,7 +216,7 @@ class GameEngine {
         birdVelocity += gravity
         birdVelocity = birdVelocity.coerceIn(minVelocity, maxVelocity)
         birdY += birdVelocity
-        birdRotation = (birdVelocity / maxVelocity * 40f).coerceIn(-25f, 55f)
+        birdRotation = (birdVelocity / maxVelocity * 35f).coerceIn(-20f, 50f)
 
         scrollOffset += pipeSpeed * difficultyLevel
 
@@ -234,23 +234,25 @@ class GameEngine {
 
         if (birdY > screenHeight - groundHeight - birdRadius) {
             birdY = screenHeight - groundHeight - birdRadius
-            if (gameStarted) endGame()
+            endGame()
         }
         if (birdY < birdRadius) {
             birdY = birdRadius
             birdVelocity = 0f
         }
 
-        checkLevelUp()
+        if (gameMode != "endless") {
+            checkLevelUp()
+        }
     }
 
     private fun checkLevelUp() {
         val newLevel = (score / 10) + 1
         if (newLevel > level) {
             level = newLevel
-            difficultyLevel = min(1f + (level - 1) * 0.15f, 3.5f)
-            pipeGap = max(pipeGap - 8f, 100f)
-            pipeSpawnInterval = max(pipeSpawnInterval - 3f, 55f)
+            difficultyLevel = min(1f + (level - 1) * 0.12f, 3.0f)
+            pipeGap = max(pipeGap - 6f, 110f)
+            pipeSpawnInterval = max(pipeSpawnInterval - 2f, 60f)
         }
     }
 
@@ -267,9 +269,9 @@ class GameEngine {
         if (weatherTimer >= weatherChangeInterval) {
             weatherTimer = 0f
             currentWeather = when (random.nextInt(10)) {
-                in 0..5 -> "clear"
-                in 6..7 -> "rain"
-                in 8..8 -> "fog"
+                in 0..6 -> "clear"
+                in 7..8 -> "rain"
+                in 9..9 -> "fog"
                 else -> "clear"
             }
             isRaining = currentWeather == "rain"
@@ -311,22 +313,22 @@ class GameEngine {
     }
 
     private fun spawnPipe() {
-        val minTop = 70f
-        val maxTop = screenHeight - groundHeight - pipeGap - 70f
+        val minTop = 60f
+        val maxTop = screenHeight - groundHeight - pipeGap - 60f
         val topHeight = minTop + random.nextFloat() * (maxTop - minTop)
         val bottomY = topHeight + pipeGap
 
         pipes.add(Pipe(
-            x = screenWidth + 60f,
+            x = screenWidth + 50f,
             topHeight = topHeight,
             bottomY = bottomY
         ))
 
-        if (random.nextFloat() < 0.45f) {
-            val coinY = topHeight + pipeGap / 2 + random.nextFloat() * 50f - 25f
+        if (random.nextFloat() < 0.4f) {
+            val coinY = topHeight + pipeGap / 2 + random.nextFloat() * 40f - 20f
             coinItems.add(CoinItem(
-                x = screenWidth + 60f + pipeWidth / 2,
-                y = coinY.coerceIn(topHeight + 25f, bottomY - 25f)
+                x = screenWidth + 50f + pipeWidth / 2,
+                y = coinY.coerceIn(topHeight + 20f, bottomY - 20f)
             ))
         }
     }
@@ -364,7 +366,7 @@ class GameEngine {
             val p = iterator.next()
             p.x += p.vx
             p.y += p.vy
-            p.vy += 0.08f
+            p.vy += 0.06f
             p.life -= 1f
             if (p.life <= 0f) iterator.remove()
         }
@@ -375,7 +377,7 @@ class GameEngine {
             cloud.x -= cloud.speed
             if (cloud.x + cloud.width < -30f) {
                 cloud.x = screenWidth + 30f
-                cloud.y = 40f + random.nextFloat() * (screenHeight * 0.35f)
+                cloud.y = 30f + random.nextFloat() * (screenHeight * 0.3f)
             }
         }
     }
@@ -411,10 +413,10 @@ class GameEngine {
     }
 
     private fun checkCollisions() {
-        val birdLeft = birdX - birdRadius * 0.7f
-        val birdRight = birdX + birdRadius * 0.7f
-        val birdTop = birdY - birdRadius * 0.7f
-        val birdBottom = birdY + birdRadius * 0.7f
+        val birdLeft = birdX - birdRadius * 0.85f
+        val birdRight = birdX + birdRadius * 0.85f
+        val birdTop = birdY - birdRadius * 0.85f
+        val birdBottom = birdY + birdRadius * 0.85f
 
         for (pipe in pipes) {
             if (pipe.destroyed) continue
@@ -440,69 +442,71 @@ class GameEngine {
     fun getSessionDurationMs(): Long = System.currentTimeMillis() - sessionStartMs
 
     fun increaseDifficulty() {
-        difficultyLevel = min(difficultyLevel + 0.0003f, 3.5f)
+        if (gameMode != "endless") {
+            difficultyLevel = min(difficultyLevel + 0.0003f, 3.0f)
+        }
     }
 
     private fun spawnFlapParticles() {
-        for (i in 0 until 6) {
+        for (i in 0 until 5) {
             particles.add(Particle(
-                x = birdX - 5f, y = birdY + birdRadius,
-                vx = -1.5f + random.nextFloat() * 3f,
-                vy = 1f + random.nextFloat() * 2.5f,
-                life = 12f + random.nextFloat() * 8f,
-                maxLife = 20f, size = 2f + random.nextFloat() * 4f,
-                color = Color.argb(180, 255, 255, 255), type = "flap"
+                x = birdX - 3f, y = birdY + birdRadius,
+                vx = -1f + random.nextFloat() * 2f,
+                vy = 0.8f + random.nextFloat() * 2f,
+                life = 10f + random.nextFloat() * 6f,
+                maxLife = 16f, size = 2f + random.nextFloat() * 3f,
+                color = Color.argb(160, 255, 255, 255), type = "flap"
             ))
         }
     }
 
     private fun spawnScoreParticles(x: Float, y: Float) {
-        for (i in 0 until 10) {
+        for (i in 0 until 8) {
             particles.add(Particle(
                 x = x, y = y,
-                vx = -2f + random.nextFloat() * 4f,
-                vy = -3f + random.nextFloat() * 6f,
-                life = 18f + random.nextFloat() * 12f,
-                maxLife = 30f, size = 2f + random.nextFloat() * 4f,
-                color = Color.argb(200, 63, 185, 80), type = "score"
+                vx = -1.5f + random.nextFloat() * 3f,
+                vy = -2f + random.nextFloat() * 4f,
+                life = 14f + random.nextFloat() * 10f,
+                maxLife = 24f, size = 2f + random.nextFloat() * 3f,
+                color = Color.argb(180, 63, 185, 80), type = "score"
             ))
         }
     }
 
     private fun spawnCoinParticles(x: Float, y: Float) {
-        for (i in 0 until 8) {
+        for (i in 0 until 6) {
             particles.add(Particle(
                 x = x, y = y,
-                vx = -3f + random.nextFloat() * 6f,
-                vy = -4f + random.nextFloat() * 8f,
-                life = 12f + random.nextFloat() * 8f,
-                maxLife = 20f, size = 2f + random.nextFloat() * 3f,
-                color = Color.argb(200, 255, 215, 0), type = "coin"
+                vx = -2f + random.nextFloat() * 4f,
+                vy = -3f + random.nextFloat() * 6f,
+                life = 10f + random.nextFloat() * 6f,
+                maxLife = 16f, size = 1.5f + random.nextFloat() * 2.5f,
+                color = Color.argb(180, 255, 215, 0), type = "coin"
             ))
         }
     }
 
     private fun spawnHitParticles() {
-        for (i in 0 until 25) {
+        for (i in 0 until 20) {
             particles.add(Particle(
                 x = birdX, y = birdY,
-                vx = -6f + random.nextFloat() * 12f,
-                vy = -7f + random.nextFloat() * 14f,
-                life = 20f + random.nextFloat() * 15f,
-                maxLife = 35f, size = 3f + random.nextFloat() * 5f,
+                vx = -5f + random.nextFloat() * 10f,
+                vy = -6f + random.nextFloat() * 12f,
+                life = 18f + random.nextFloat() * 12f,
+                maxLife = 30f, size = 2.5f + random.nextFloat() * 4f,
                 color = Color.argb(200, 248, 81, 73), type = "hit"
             ))
         }
     }
 
     private fun spawnDestroyParticles(x: Float, y: Float) {
-        for (i in 0 until 15) {
+        for (i in 0 until 12) {
             particles.add(Particle(
                 x = x, y = y,
-                vx = -4f + random.nextFloat() * 8f,
-                vy = -5f + random.nextFloat() * 10f,
-                life = 15f + random.nextFloat() * 10f,
-                maxLife = 25f, size = 3f + random.nextFloat() * 5f,
+                vx = -3f + random.nextFloat() * 6f,
+                vy = -4f + random.nextFloat() * 8f,
+                life = 12f + random.nextFloat() * 8f,
+                maxLife = 20f, size = 2.5f + random.nextFloat() * 4f,
                 color = Color.argb(200, 255, 140, 30), type = "destroy"
             ))
         }
@@ -511,30 +515,36 @@ class GameEngine {
     fun getSkyColor(): Int = when (gameMode) {
         "challenge" -> if (isNight) Color.parseColor("#FF2D0A0A") else Color.parseColor("#FF5C1A1A")
         "practice" -> if (isNight) Color.parseColor("#FF0A1A2D") else Color.parseColor("#FF1A4A6C")
-        else -> if (isNight) Color.parseColor("#FF0D1B2A") else Color.parseColor("#FF4A90D9")
+        else -> if (isNight) Color.parseColor("#FF0D1B2A") else Color.parseColor("#FF70C5DE")
     }
 
     fun getGroundColor(): Int = when (gameMode) {
         "challenge" -> if (isNight) Color.parseColor("#FF3D1A0A") else Color.parseColor("#FF6B2A10")
         "practice" -> if (isNight) Color.parseColor("#FF0A2D1A") else Color.parseColor("#FF1A5C30")
-        else -> if (isNight) Color.parseColor("#FF1A3316") else Color.parseColor("#FF2D5A27")
+        else -> if (isNight) Color.parseColor("#FF1A3316") else Color.parseColor("#FFDED895")
     }
 
     fun getPipeColor(): Int = when (gameMode) {
         "challenge" -> if (isNight) Color.parseColor("#FF6B1A0A") else Color.parseColor("#FF8B3A20")
         "practice" -> if (isNight) Color.parseColor("#FF1A3D6B") else Color.parseColor("#FF2A5D8B")
-        else -> if (isNight) Color.parseColor("#FF1B5E20") else Color.parseColor("#FF3FB950")
+        else -> if (isNight) Color.parseColor("#FF1B5E20") else Color.parseColor("#FF74BF2E")
     }
 
     fun getPipeHighlightColor(): Int = when (gameMode) {
         "challenge" -> if (isNight) Color.parseColor("#FF8B2A10") else Color.parseColor("#FFAB5A30")
         "practice" -> if (isNight) Color.parseColor("#FF2A5D8B") else Color.parseColor("#FF4A7DAB")
-        else -> if (isNight) Color.parseColor("#FF2D8A30") else Color.parseColor("#FF5FD968")
+        else -> if (isNight) Color.parseColor("#FF2D8A30") else Color.parseColor("#FF8FD94E")
     }
 
-    fun getCloudAlpha(): Float = if (isNight) 0.12f else 0.35f
-    fun getFogAlpha(): Float = if (isFoggy) 0.25f else 0f
-    fun getRainAlpha(): Float = if (isRaining) 0.4f else 0f
+    fun getPipeCapColor(): Int = when (gameMode) {
+        "challenge" -> if (isNight) Color.parseColor("#FF9B3A20") else Color.parseColor("#FFBB6A40")
+        "practice" -> if (isNight) Color.parseColor("#FF3A5D9B") else Color.parseColor("#FF5A7DBB")
+        else -> if (isNight) Color.parseColor("#FF3D8A30") else Color.parseColor("#FFA0E060")
+    }
+
+    fun getCloudAlpha(): Float = if (isNight) 0.1f else 0.3f
+    fun getFogAlpha(): Float = if (isFoggy) 0.2f else 0f
+    fun getRainAlpha(): Float = if (isRaining) 0.35f else 0f
 
     fun getPipes(): List<Pipe> = pipes
     fun getCoinItems(): List<CoinItem> = coinItems
