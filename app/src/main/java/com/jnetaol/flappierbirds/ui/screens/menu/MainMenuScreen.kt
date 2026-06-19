@@ -186,7 +186,7 @@ private fun ModeSelectorDialog(
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3FB950))
                 ) {
-                    Icon(Icons.Default.Infinity, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.AllInclusive, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text("Endless", fontWeight = FontWeight.Bold)

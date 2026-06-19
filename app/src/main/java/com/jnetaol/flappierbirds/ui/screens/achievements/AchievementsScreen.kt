@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -75,7 +76,7 @@ fun AchievementsScreen(
                             color = Color.White
                         )
                         LinearProgressIndicator(
-                            progress = { if (totalCount > 0) unlockedCount.toFloat() / totalCount.toFloat() else 0f },
+                            progress = if (totalCount > 0) unlockedCount.toFloat() / totalCount.toFloat() else 0f,
                             modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
                             color = Color(0xFFD29922),
                             trackColor = Color(0xFF30363D),

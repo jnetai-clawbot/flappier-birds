@@ -140,7 +140,7 @@ fun StatisticsScreen(
                     "Endless",
                     "${stats?.endlessSessions ?: 0}",
                     Modifier.weight(1f),
-                    Icons.Default.Infinity
+                    Icons.Default.AllInclusive
                 )
                 StatCard(
                     "Challenge",

@@ -20,6 +20,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun GameButton(
     text: String,
@@ -157,7 +159,7 @@ fun AchievementCard(
                 if (!unlocked && target > 1) {
                     Spacer(Modifier.height(4.dp))
                     LinearProgressIndicator(
-                        progress = { progress.toFloat() / target.toFloat() },
+                        progress = progress.toFloat() / target.toFloat(),
                         modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.surface,

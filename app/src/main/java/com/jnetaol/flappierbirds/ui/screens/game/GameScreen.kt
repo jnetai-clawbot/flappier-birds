@@ -457,7 +457,7 @@ private fun DrawScope.drawHUD(engine: GameEngine, size: Size) {
         val coinPaint = android.graphics.Paint().apply {
             color = android.graphics.Color.rgb(255, 215, 0)
             textSize = 28f * size.width / 1080f
-            textAlign = android.graphics.Paint.Align.Left
+            textAlign = android.graphics.Paint.Align.LEFT
             isAntiAlias = true
             setShadowLayer(2f, 0f, 1f, android.graphics.Color.BLACK)
         }
@@ -489,12 +489,13 @@ private fun DrawScope.drawStartPrompt(engine: GameEngine, size: Size) {
         promptPaint
     )
 
+    val modePaintAlpha = (alpha * 255).toInt()
     val modePaint = android.graphics.Paint().apply {
         color = android.graphics.Color.rgb(88, 166, 255)
         textSize = 20f * size.width / 1080f
         textAlign = android.graphics.Paint.Align.CENTER
         isAntiAlias = true
-        alpha = (alpha * 255).toInt()
+        this.alpha = modePaintAlpha
     }
     drawContext.canvas.nativeCanvas.drawText(
         "Mode: ${engine.gameMode.replaceFirstChar { it.uppercase() }}",
