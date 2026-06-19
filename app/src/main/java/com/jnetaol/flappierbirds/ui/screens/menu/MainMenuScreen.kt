@@ -189,8 +189,8 @@ private fun ModeSelectorDialog(
                     Icon(Icons.Default.AllInclusive, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Column {
-                        Text("Endless", fontWeight = FontWeight.Bold)
-                        Text("Classic infinite gameplay", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
+                        Text("Classic", fontWeight = FontWeight.Bold)
+                        Text("Flappy Birds style — tap to flap through pipes", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -204,7 +204,7 @@ private fun ModeSelectorDialog(
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text("Challenge", fontWeight = FontWeight.Bold)
-                        Text("Faster speed, harder gaps", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
+                        Text("Faster + laser weapon to blast pipes", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -218,7 +218,7 @@ private fun ModeSelectorDialog(
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text("Practice", fontWeight = FontWeight.Bold)
-                        Text("Slower speed, wider gaps", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
+                        Text("Slower speed, wider gaps — learn to fly", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
                     }
                 }
             }

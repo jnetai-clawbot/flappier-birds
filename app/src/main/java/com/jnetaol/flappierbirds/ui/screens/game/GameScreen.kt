@@ -20,7 +20,6 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,7 +42,6 @@ fun GameScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val density = LocalDensity.current
     val engine = remember { GameEngine() }
     var screenWidth by remember { mutableFloatStateOf(1080f) }
     var screenHeight by remember { mutableFloatStateOf(1920f) }
@@ -52,20 +50,17 @@ fun GameScreen(
     var fpsTimer by remember { mutableLongStateOf(0L) }
     var showPauseMenu by remember { mutableStateOf(false) }
     var gameEndRecorded by remember { mutableStateOf(false) }
+    var initDone by remember { mutableStateOf(false) }
 
     val vibrator = remember {
-        try {
-            context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
-        } catch (_: Exception) {
-            null
-        }
+        try { context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator }
+        catch (_: Exception) { null }
     }
 
     LaunchedEffect(Unit) {
         try {
             engine.gameMode = gameMode
-            engine.init(screenWidth, screenHeight)
-            DebugLogger.i("FB-200", "Game started: mode=$gameMode w=$screenWidth h=$screenHeight", null)
+            DebugLogger.i("FB-200", "Game started: mode=$gameMode", null)
 
             while (isActive) {
                 try {
@@ -77,23 +72,18 @@ fun GameScreen(
                     frameCount++
                     val now = System.currentTimeMillis()
                     if (now - fpsTimer >= 1000) {
-                        fps = frameCount
-                        frameCount = 0
-                        fpsTimer = now
+                        fps = frameCount; frameCount = 0; fpsTimer = now
                     }
 
                     if (engine.isGameOver && !gameEndRecorded) {
                         gameEndRecorded = true
                         val duration = engine.getSessionDurationMs()
-                        DebugLogger.i("FB-201", "Game over: score=${engine.score} coins=${engine.coins} duration=${duration}ms", null)
+                        DebugLogger.i("FB-201", "Game over: score=${engine.score} coins=${engine.coins}", null)
                         launch(Dispatchers.IO) {
                             try {
                                 repository.recordGameEnd(
-                                    mode = gameMode,
-                                    score = engine.score,
-                                    coins = engine.coins,
-                                    flaps = engine.flaps,
-                                    obstaclesPassed = engine.obstaclesPassed,
+                                    mode = gameMode, score = engine.score, coins = engine.coins,
+                                    flaps = engine.flaps, obstaclesPassed = engine.obstaclesPassed,
                                     sessionDurationMs = duration
                                 )
                             } catch (e: Exception) {
@@ -103,13 +93,12 @@ fun GameScreen(
                         onGameEnd(engine.score, engine.coins, engine.flaps, engine.obstaclesPassed, duration)
                     }
                 } catch (e: Exception) {
-                    DebugLogger.logException("FB-210", "Game loop iteration error", e)
+                    DebugLogger.logException("FB-210", "Game loop error", e)
                 }
-
                 delay(16L)
             }
         } catch (e: Exception) {
-            DebugLogger.logException("FB-211", "Game loop fatal error", e)
+            DebugLogger.logException("FB-211", "Game loop fatal", e)
         }
     }
 
@@ -118,41 +107,38 @@ fun GameScreen(
             .fillMaxSize()
             .background(Color(0xFF0D1117))
             .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        if (engine.isGameOver) {
-                            engine.resetGame()
-                            gameEndRecorded = false
-                        } else if (showPauseMenu) {
-                            showPauseMenu = false
-                            engine.isPaused = false
-                        } else {
-                            engine.flap()
-                            soundManager.playFlap()
-                            if (hapticEnabled) {
-                                try {
-                                    vibrator?.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE))
-                                } catch (_: Exception) {}
-                            }
+                detectTapGestures(onTap = {
+                    if (engine.isGameOver) {
+                        engine.resetGame()
+                        gameEndRecorded = false
+                    } else if (showPauseMenu) {
+                        showPauseMenu = false
+                        engine.isPaused = false
+                    } else {
+                        engine.flap()
+                        soundManager.playFlap()
+                        if (hapticEnabled) {
+                            try { vibrator?.vibrate(VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE)) }
+                            catch (_: Exception) {}
                         }
                     }
-                )
+                })
             }
     ) {
-        Canvas(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
             try {
                 screenWidth = size.width
                 screenHeight = size.height
-                if (!engine.gameStarted && !engine.isGameOver) {
+                if (!initDone) {
                     engine.init(screenWidth, screenHeight)
+                    initDone = true
                 }
 
                 drawGameBackground(engine, size)
                 drawClouds(engine, size)
                 drawPipes(engine, size)
                 drawCoins(engine, size)
+                drawProjectiles(engine, size)
                 drawGround(engine, size)
                 drawBird(engine, size)
                 drawParticles(engine, size)
@@ -167,17 +153,28 @@ fun GameScreen(
             }
         }
 
+        if (engine.weaponAmmo > 0 && engine.gameStarted && !engine.isGameOver) {
+            FloatingActionButton(
+                onClick = { engine.fireWeapon() },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(24.dp)
+                    .navigationBarsPadding()
+                    .size(56.dp),
+                containerColor = Color(0xFFFF5722),
+                contentColor = Color.White
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.FlashOn, contentDescription = "Fire", modifier = Modifier.size(22.dp))
+                    Text("${engine.weaponAmmo}", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
         if (showPauseMenu) {
             PauseOverlay(
-                onResume = {
-                    showPauseMenu = false
-                    engine.isPaused = false
-                },
-                onRestart = {
-                    showPauseMenu = false
-                    engine.resetGame()
-                    gameEndRecorded = false
-                },
+                onResume = { showPauseMenu = false; engine.isPaused = false },
+                onRestart = { showPauseMenu = false; engine.resetGame(); gameEndRecorded = false },
                 onMainMenu = onNavigateBack
             )
         }
@@ -185,12 +182,10 @@ fun GameScreen(
         if (engine.isGameOver) {
             GameOverOverlay(
                 score = engine.score,
-                bestScore = 0,
+                bestScore = engine.bestScore,
                 coins = engine.coins,
-                onRestart = {
-                    engine.resetGame()
-                    gameEndRecorded = false
-                },
+                level = engine.getLevel(),
+                onRestart = { engine.resetGame(); gameEndRecorded = false },
                 onMainMenu = onNavigateBack
             )
         }
@@ -198,150 +193,95 @@ fun GameScreen(
         IconButton(
             onClick = {
                 if (!engine.isGameOver && engine.gameStarted) {
-                    showPauseMenu = true
-                    engine.isPaused = true
+                    showPauseMenu = true; engine.isPaused = true
                 }
             },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-                .statusBarsPadding()
+            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).statusBarsPadding()
         ) {
-            Icon(
-                Icons.Default.Pause,
-                contentDescription = "Pause",
-                tint = Color.White.copy(alpha = 0.8f),
-                modifier = Modifier.size(32.dp)
-            )
+            Icon(Icons.Default.Pause, contentDescription = "Pause", tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(32.dp))
         }
 
         if (showFps) {
-            Text(
-                "FPS: $fps",
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(16.dp)
-                    .statusBarsPadding(),
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
-            )
+            Text("FPS: $fps", modifier = Modifier.align(Alignment.TopStart).padding(16.dp).statusBarsPadding(),
+                color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
 
 private fun DrawScope.drawGameBackground(engine: GameEngine, size: Size) {
-    val skyColor = engine.getSkyColor()
-    drawRect(color = Color(skyColor), size = size)
+    drawRect(color = Color(engine.getSkyColor()), size = size)
 
-    val starCount = if (engine.isNight) 80 else 0
+    val starCount = if (engine.isNight) 60 else 0
     if (starCount > 0) {
-        val starAlpha = (sin(engine.getScrollOffset() * 0.01f) * 0.3f + 0.7f).toFloat()
+        val starAlpha = (sin(engine.getScrollOffset() * 0.008f) * 0.3f + 0.7f).toFloat()
         for (i in 0 until starCount) {
-            val sx = (i * 137.5f + engine.getScrollOffset() * 0.02f) % size.width
-            val sy = (i * 73.1f) % (size.height * 0.5f)
-            val starSize = 1f + (i % 3).toFloat()
-            drawCircle(
-                color = Color.White.copy(alpha = starAlpha * (0.5f + (i % 5) * 0.1f)),
-                radius = starSize,
-                center = Offset(sx, sy)
-            )
+            val sx = (i * 137.5f + engine.getScrollOffset() * 0.015f) % size.width
+            val sy = (i * 73.1f) % (size.height * 0.45f)
+            drawCircle(Color.White.copy(alpha = starAlpha * (0.4f + (i % 5) * 0.12f)), 1f + (i % 3).toFloat(), Offset(sx, sy))
         }
     }
 
     val fogAlpha = engine.getFogAlpha()
-    if (fogAlpha > 0f) {
-        drawRect(
-            color = Color(0xFF576574).copy(alpha = fogAlpha),
-            size = size
-        )
-    }
+    if (fogAlpha > 0f) drawRect(Color(0xFF576574).copy(alpha = fogAlpha), size = size)
 }
 
 private fun DrawScope.drawClouds(engine: GameEngine, size: Size) {
     val cloudAlpha = engine.getCloudAlpha()
     for (cloud in engine.getClouds()) {
-        val cx = cloud.x
-        val cy = cloud.y
-        val cw = cloud.width
-        val ch = cloud.height
-
-        drawOval(
-            color = Color(0xFFC8D6E5).copy(alpha = cloudAlpha * cloud.alpha),
-            topLeft = Offset(cx - cw / 2, cy),
-            size = Size(cw, ch)
-        )
-        drawOval(
-            color = Color(0xFFC8D6E5).copy(alpha = cloudAlpha * cloud.alpha * 0.8f),
-            topLeft = Offset(cx - cw / 3, cy - ch * 0.3f),
-            size = Size(cw * 0.7f, ch * 0.8f)
-        )
-        drawOval(
-            color = Color(0xFFC8D6E5).copy(alpha = cloudAlpha * cloud.alpha * 0.6f),
-            topLeft = Offset(cx + cw * 0.1f, cy - ch * 0.1f),
-            size = Size(cw * 0.5f, ch * 0.6f)
-        )
+        val cx = cloud.x; val cy = cloud.y; val cw = cloud.width; val ch = cloud.height
+        drawOval(Color(0xFFC8D6E5).copy(alpha = cloudAlpha * cloud.alpha), Offset(cx - cw / 2, cy), Size(cw, ch))
+        drawOval(Color(0xFFC8D6E5).copy(alpha = cloudAlpha * cloud.alpha * 0.7f), Offset(cx - cw / 3, cy - ch * 0.3f), Size(cw * 0.7f, ch * 0.8f))
+        drawOval(Color(0xFFC8D6E5).copy(alpha = cloudAlpha * cloud.alpha * 0.5f), Offset(cx + cw * 0.1f, cy - ch * 0.1f), Size(cw * 0.5f, ch * 0.6f))
     }
 }
 
 private fun DrawScope.drawPipes(engine: GameEngine, size: Size) {
     val pipeColor = Color(engine.getPipeColor())
     val pipeHighlight = Color(engine.getPipeHighlightColor())
-    val pipeWidth = 80f
-    val capHeight = 30f
-    val capWidth = 90f
+    val pw = engine.getPipeWidth()
+    val capH = 28f; val capW = pw + 12f
 
     for (pipe in engine.getPipes()) {
-        drawRect(
-            color = pipeColor,
-            topLeft = Offset(pipe.x, 0f),
-            size = Size(pipeWidth, pipe.topHeight - capHeight)
-        )
-        drawRect(
-            color = pipeHighlight,
-            topLeft = Offset(pipe.x - 5f, pipe.topHeight - capHeight),
-            size = Size(capWidth, capHeight)
-        )
-        drawRect(
-            color = pipeColor,
-            topLeft = Offset(pipe.x, pipe.bottomY + capHeight),
-            size = Size(pipeWidth, size.height - pipe.bottomY - capHeight)
-        )
-        drawRect(
-            color = pipeHighlight,
-            topLeft = Offset(pipe.x - 5f, pipe.bottomY),
-            size = Size(capWidth, capHeight)
-        )
+        if (pipe.destroyed) {
+            val alpha = (pipe.destroyTimer / 20f).coerceIn(0f, 1f)
+            val debrisColor = Color(0xFFFF8C00).copy(alpha = alpha)
+            for (j in 0 until 6) {
+                val dx = (j * 17f - 40f) * alpha
+                val dy = (j * 13f - 30f) * alpha
+                drawCircle(debrisColor, 5f * alpha, Offset(pipe.x + pw / 2 + dx, pipe.topHeight + dy))
+                drawCircle(debrisColor, 4f * alpha, Offset(pipe.x + pw / 2 + dx + 10f, pipe.bottomY + dy))
+            }
+            continue
+        }
 
-        drawRect(
-            color = pipeHighlight.copy(alpha = 0.3f),
-            topLeft = Offset(pipe.x + 5f, 0f),
-            size = Size(8f, pipe.topHeight - capHeight)
-        )
-        drawRect(
-            color = pipeHighlight.copy(alpha = 0.3f),
-            topLeft = Offset(pipe.x + 5f, pipe.bottomY + capHeight),
-            size = Size(8f, size.height - pipe.bottomY - capHeight)
-        )
+        drawRect(pipeColor, Offset(pipe.x, 0f), Size(pw, pipe.topHeight - capH))
+        drawRect(pipeHighlight, Offset(pipe.x - 6f, pipe.topHeight - capH), Size(capW, capH))
+        drawRect(pipeColor, Offset(pipe.x, pipe.bottomY + capH), Size(pw, size.height - pipe.bottomY - capH))
+        drawRect(pipeHighlight, Offset(pipe.x - 6f, pipe.bottomY), Size(capW, capH))
+
+        drawRect(pipeHighlight.copy(alpha = 0.25f), Offset(pipe.x + 4f, 0f), Size(6f, pipe.topHeight - capH))
+        drawRect(pipeHighlight.copy(alpha = 0.25f), Offset(pipe.x + 4f, pipe.bottomY + capH), Size(6f, size.height - pipe.bottomY - capH))
     }
 }
 
 private fun DrawScope.drawCoins(engine: GameEngine, size: Size) {
     for (coin in engine.getCoinItems()) {
         if (coin.collected) continue
-        val rotation = (engine.getScrollOffset() * 0.05f) % 360f
-        val scaleX = abs(cos(rotation * PI / 180f)).toFloat().coerceAtLeast(0.2f)
+        val rotation = (engine.getScrollOffset() * 0.06f) % 360f
+        val scaleX = abs(cos(rotation * PI / 180f)).toFloat().coerceAtLeast(0.15f)
+        val r = coin.scale * 16f
+        drawOval(Color(0xFFFFD700).copy(alpha = coin.alpha), Offset(coin.x - r * scaleX, coin.y - r), Size(r * 2 * scaleX, r * 2))
+        drawOval(Color(0xFFFFA500).copy(alpha = coin.alpha * 0.4f), Offset(coin.x - r * 0.6f * scaleX, coin.y - r * 0.6f), Size(r * 1.2f * scaleX, r * 1.2f))
+    }
+}
 
-        drawOval(
-            color = Color(0xFFFFD700).copy(alpha = coin.alpha),
-            topLeft = Offset(coin.x - coin.scale * 18f * scaleX, coin.y - coin.scale * 18f),
-            size = Size(coin.scale * 36f * scaleX, coin.scale * 36f)
-        )
-        drawOval(
-            color = Color(0xFFFFA500).copy(alpha = coin.alpha * 0.5f),
-            topLeft = Offset(coin.x - coin.scale * 12f * scaleX, coin.y - coin.scale * 12f),
-            size = Size(coin.scale * 24f * scaleX, coin.scale * 24f)
-        )
+private fun DrawScope.drawProjectiles(engine: GameEngine, size: Size) {
+    for (proj in engine.getProjectiles()) {
+        val alpha = (proj.life / 60f).coerceIn(0f, 1f)
+        val color = Color(proj.color).copy(alpha = alpha)
+        drawCircle(color, proj.radius, Offset(proj.x, proj.y))
+        drawCircle(Color.White.copy(alpha = alpha * 0.6f), proj.radius * 0.4f, Offset(proj.x, proj.y))
+        drawLine(color.copy(alpha = alpha * 0.3f), Offset(proj.x - proj.radius * 3, proj.y), Offset(proj.x, proj.y), strokeWidth = proj.radius * 0.8f)
     }
 }
 
@@ -350,83 +290,59 @@ private fun DrawScope.drawGround(engine: GameEngine, size: Size) {
     val groundY = size.height - engine.getGroundHeight()
     val scrollOffset = engine.getScrollOffset()
 
-    drawRect(
-        color = groundColor,
-        topLeft = Offset(0f, groundY),
-        size = Size(size.width, engine.getGroundHeight())
-    )
+    drawRect(groundColor, Offset(0f, groundY), Size(size.width, engine.getGroundHeight()))
 
-    val stripeColor = groundColor.copy(alpha = 0.5f)
-    val stripeWidth = 40f
-    val stripeSpacing = 80f
+    val stripeColor = groundColor.copy(alpha = 0.4f)
+    val stripeW = 35f; val stripeSpacing = 70f
     var sx = -(scrollOffset % stripeSpacing)
     while (sx < size.width) {
-        drawRect(
-            color = stripeColor,
-            topLeft = Offset(sx, groundY + 10f),
-            size = Size(stripeWidth, 8f)
-        )
+        drawRect(stripeColor, Offset(sx, groundY + 8f), Size(stripeW, 6f))
         sx += stripeSpacing
     }
 
-    drawRect(
-        color = Color(0xFF1B3D1E).copy(alpha = 0.8f),
-        topLeft = Offset(0f, groundY),
-        size = Size(size.width, 4f)
-    )
+    drawRect(Color(0xFF1B3D1E).copy(alpha = 0.7f), Offset(0f, groundY), Size(size.width, 3f))
 }
 
 private fun DrawScope.drawBird(engine: GameEngine, size: Size) {
     val birdColor = Color(android.graphics.Color.parseColor(engine.birdColor))
-    val bx = engine.birdX
-    val by = engine.birdY
-    val radius = engine.birdRadius
+    val bx = engine.birdX; val by = engine.birdY; val r = engine.birdRadius
     val rotation = engine.birdRotation
 
     rotate(rotation, pivot = Offset(bx, by)) {
-        drawCircle(color = birdColor, radius = radius, center = Offset(bx, by))
+        drawCircle(birdColor, r, Offset(bx, by))
 
-        drawCircle(
-            color = Color.White.copy(alpha = 0.9f),
-            radius = radius * 0.25f,
-            center = Offset(bx + radius * 0.3f, by - radius * 0.2f)
-        )
-        drawCircle(
-            color = Color.Black,
-            radius = radius * 0.12f,
-            center = Offset(bx + radius * 0.35f, by - radius * 0.2f)
-        )
+        drawCircle(Color.White.copy(alpha = 0.9f), r * 0.22f, Offset(bx + r * 0.35f, by - r * 0.25f))
+        drawCircle(Color.Black, r * 0.1f, Offset(bx + r * 0.4f, by - r * 0.25f))
 
-        val wingFlap = if (engine.gameStarted && !engine.isGameOver) {
-            sin(engine.getScrollOffset() * 0.3f).toFloat() * 8f
-        } else 0f
-
-        drawOval(
-            color = birdColor.copy(alpha = 0.8f),
-            topLeft = Offset(bx - radius * 0.1f, by - radius * 0.5f + wingFlap),
-            size = Size(radius * 1.2f, radius * 0.6f)
-        )
+        val wingFlap = if (engine.gameStarted && !engine.isGameOver) sin(engine.getScrollOffset() * 0.35f).toFloat() * 7f else 0f
+        drawOval(birdColor.copy(alpha = 0.85f), Offset(bx - r * 0.15f, by - r * 0.55f + wingFlap), Size(r * 1.3f, r * 0.55f))
 
         val beakColor = Color(0xFFFFA500)
         val path = Path().apply {
-            moveTo(bx + radius * 0.8f, by - radius * 0.1f)
-            lineTo(bx + radius * 1.3f, by)
-            lineTo(bx + radius * 0.8f, by + radius * 0.1f)
+            moveTo(bx + r * 0.75f, by - r * 0.12f)
+            lineTo(bx + r * 1.25f, by)
+            lineTo(bx + r * 0.75f, by + r * 0.12f)
             close()
         }
         drawPath(path, beakColor)
+
+        val tailColor = birdColor.copy(alpha = 0.7f)
+        val tailPath = Path().apply {
+            moveTo(bx - r * 0.8f, by - r * 0.3f)
+            lineTo(bx - r * 1.3f, by - r * 0.6f)
+            lineTo(bx - r * 1.1f, by)
+            lineTo(bx - r * 1.3f, by + r * 0.4f)
+            lineTo(bx - r * 0.8f, by + r * 0.2f)
+            close()
+        }
+        drawPath(tailPath, tailColor)
     }
 }
 
 private fun DrawScope.drawParticles(engine: GameEngine, size: Size) {
     for (p in engine.getParticles()) {
         val alpha = (p.life / p.maxLife).coerceIn(0f, 1f)
-        val particleColor = Color(p.color).copy(alpha = alpha)
-        drawCircle(
-            color = particleColor,
-            radius = p.size * alpha,
-            center = Offset(p.x, p.y)
-        )
+        drawCircle(Color(p.color).copy(alpha = alpha), p.size * alpha, Offset(p.x, p.y))
     }
 }
 
@@ -434,16 +350,11 @@ private fun DrawScope.drawWeatherEffects(engine: GameEngine, size: Size) {
     val rainAlpha = engine.getRainAlpha()
     if (rainAlpha > 0f) {
         val rainColor = Color(0xFF8395A7).copy(alpha = rainAlpha)
-        val scrollOffset = engine.getScrollOffset()
-        for (i in 0 until 40) {
-            val rx = (i * 97.3f + scrollOffset * 0.5f) % size.width
-            val ry = (i * 53.7f + scrollOffset * 1.2f) % size.height
-            drawLine(
-                color = rainColor,
-                start = Offset(rx, ry),
-                end = Offset(rx - 3f, ry + 15f),
-                strokeWidth = 1.5f
-            )
+        val so = engine.getScrollOffset()
+        for (i in 0 until 35) {
+            val rx = (i * 97.3f + so * 0.4f) % size.width
+            val ry = (i * 53.7f + so * 1.1f) % size.height
+            drawLine(rainColor, Offset(rx, ry), Offset(rx - 2f, ry + 12f), 1.2f)
         }
     }
 }
@@ -451,127 +362,82 @@ private fun DrawScope.drawWeatherEffects(engine: GameEngine, size: Size) {
 private fun DrawScope.drawHUD(engine: GameEngine, size: Size) {
     if (!engine.gameStarted && !engine.isGameOver) return
 
-    val scoreText = "${engine.score}"
-    val textPaint = android.graphics.Paint().apply {
-        color = android.graphics.Color.WHITE
-        textSize = 64f * size.width / 1080f
-        textAlign = android.graphics.Paint.Align.CENTER
-        isAntiAlias = true
-        setShadowLayer(4f, 0f, 2f, android.graphics.Color.BLACK)
-    }
+    val scale = size.width / 1080f
 
-    drawContext.canvas.nativeCanvas.drawText(
-        scoreText,
-        size.width / 2,
-        120f * size.width / 1080f,
-        textPaint
-    )
+    val scorePaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.WHITE; textSize = 56f * scale
+        textAlign = android.graphics.Paint.Align.CENTER; isAntiAlias = true
+        setShadowLayer(3f, 0f, 2f, android.graphics.Color.BLACK)
+    }
+    drawContext.canvas.nativeCanvas.drawText("${engine.score}", size.width / 2, 100f * scale, scorePaint)
+
+    val levelPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.rgb(255, 215, 0); textSize = 22f * scale
+        textAlign = android.graphics.Paint.Align.LEFT; isAntiAlias = true
+        setShadowLayer(2f, 0f, 1f, android.graphics.Color.BLACK)
+    }
+    drawContext.canvas.nativeCanvas.drawText("Lv.${engine.getLevel()}", 16f * scale, 60f * scale, levelPaint)
 
     if (engine.coins > 0) {
         val coinPaint = android.graphics.Paint().apply {
-            color = android.graphics.Color.rgb(255, 215, 0)
-            textSize = 28f * size.width / 1080f
-            textAlign = android.graphics.Paint.Align.LEFT
-            isAntiAlias = true
+            color = android.graphics.Color.rgb(255, 215, 0); textSize = 24f * scale
+            textAlign = android.graphics.Paint.Align.LEFT; isAntiAlias = true
             setShadowLayer(2f, 0f, 1f, android.graphics.Color.BLACK)
         }
-        drawContext.canvas.nativeCanvas.drawText(
-            "Coins: ${engine.coins}",
-            20f * size.width / 1080f,
-            80f * size.width / 1080f,
-            coinPaint
-        )
+        drawContext.canvas.nativeCanvas.drawText("${engine.coins}", 16f * scale, 90f * scale, coinPaint)
     }
 }
 
 private fun DrawScope.drawStartPrompt(engine: GameEngine, size: Size) {
+    val scale = size.width / 1080f
+    val alpha = (sin(engine.getScrollOffset() * 0.015f) * 0.3f + 0.7f).toFloat()
+
     val promptPaint = android.graphics.Paint().apply {
-        color = android.graphics.Color.WHITE
-        textSize = 32f * size.width / 1080f
-        textAlign = android.graphics.Paint.Align.CENTER
-        isAntiAlias = true
-        setShadowLayer(3f, 0f, 1f, android.graphics.Color.BLACK)
+        color = android.graphics.Color.WHITE; textSize = 28f * scale
+        textAlign = android.graphics.Paint.Align.CENTER; isAntiAlias = true
+        setShadowLayer(2f, 0f, 1f, android.graphics.Color.BLACK)
+        this.alpha = (alpha * 255).toInt()
     }
+    drawContext.canvas.nativeCanvas.drawText("Tap to Flap", size.width / 2, size.height * 0.5f, promptPaint)
 
-    val alpha = (sin(engine.getScrollOffset() * 0.02f) * 0.3f + 0.7f).toFloat()
-    promptPaint.alpha = (alpha * 255).toInt()
-
-    drawContext.canvas.nativeCanvas.drawText(
-        "Tap to Start",
-        size.width / 2,
-        size.height * 0.55f,
-        promptPaint
-    )
-
-    val modePaintAlpha = (alpha * 255).toInt()
     val modePaint = android.graphics.Paint().apply {
-        color = android.graphics.Color.rgb(88, 166, 255)
-        textSize = 20f * size.width / 1080f
-        textAlign = android.graphics.Paint.Align.CENTER
-        isAntiAlias = true
-        this.alpha = modePaintAlpha
+        color = android.graphics.Color.rgb(88, 166, 255); textSize = 18f * scale
+        textAlign = android.graphics.Paint.Align.CENTER; isAntiAlias = true
+        this.alpha = (alpha * 200).toInt()
     }
-    drawContext.canvas.nativeCanvas.drawText(
-        "Mode: ${engine.gameMode.replaceFirstChar { it.uppercase() }}",
-        size.width / 2,
-        size.height * 0.6f,
-        modePaint
-    )
+    val modeName = when (engine.gameMode) { "endless" -> "Classic"; "challenge" -> "Challenge"; "practice" -> "Practice"; else -> engine.gameMode }
+    drawContext.canvas.nativeCanvas.drawText("$modeName Mode", size.width / 2, size.height * 0.55f, modePaint)
+
+    if (engine.weaponAmmo > 0) {
+        val weaponPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.rgb(255, 80, 50); textSize = 14f * scale
+            textAlign = android.graphics.Paint.Align.CENTER; isAntiAlias = true
+            this.alpha = (alpha * 180).toInt()
+        }
+        drawContext.canvas.nativeCanvas.drawText("Weapon: ${engine.weaponType.uppercase()} (${engine.weaponAmmo} shots)", size.width / 2, size.height * 0.6f, weaponPaint)
+    }
 }
 
 @Composable
-private fun PauseOverlay(
-    onResume: () -> Unit,
-    onRestart: () -> Unit,
-    onMainMenu: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)),
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+private fun PauseOverlay(onResume: () -> Unit, onRestart: () -> Unit, onMainMenu: () -> Unit) {
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)), contentAlignment = Alignment.Center) {
+        Card(shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)), modifier = Modifier.padding(32.dp)) {
+            Column(Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Paused", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 Spacer(Modifier.height(24.dp))
-                Button(
-                    onClick = onResume,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3FB950))
-                ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Resume", fontWeight = FontWeight.Bold)
+                Button(onResume, Modifier.fillMaxWidth().height(52.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3FB950))) {
+                    Icon(Icons.Default.PlayArrow, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("Resume", fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = onRestart,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF58A6FF))
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Restart", fontWeight = FontWeight.Bold)
+                Button(onRestart, Modifier.fillMaxWidth().height(52.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF58A6FF))) {
+                    Icon(Icons.Default.Refresh, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("Restart", fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = onMainMenu,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Main Menu", fontWeight = FontWeight.Bold)
+                OutlinedButton(onMainMenu, Modifier.fillMaxWidth().height(52.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
+                    Icon(Icons.Default.Home, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("Main Menu", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -579,60 +445,33 @@ private fun PauseOverlay(
 }
 
 @Composable
-private fun GameOverOverlay(
-    score: Int,
-    bestScore: Int,
-    coins: Int,
-    onRestart: () -> Unit,
-    onMainMenu: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.75f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)),
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+private fun GameOverOverlay(score: Int, bestScore: Int, coins: Int, level: Int, onRestart: () -> Unit, onMainMenu: () -> Unit) {
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.75f)), contentAlignment = Alignment.Center) {
+        Card(shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)), modifier = Modifier.padding(32.dp)) {
+            Column(Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Game Over", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF85149))
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
                 Text("Score", fontSize = 14.sp, color = Color(0xFF8B949E))
                 Text("$score", fontSize = 48.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Spacer(Modifier.height(8.dp))
-                Text("Best: $bestScore", fontSize = 16.sp, color = Color(0xFFD29922))
+                Spacer(Modifier.height(4.dp))
+                Text("Best: $bestScore", fontSize = 16.sp, color = Color(0xFFD29922), fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(2.dp))
+                Text("Level $level", fontSize = 14.sp, color = Color(0xFF58A6FF))
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.MonetizationOn, null, tint = Color(0xFFFFD700), modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("+$coins", fontSize = 16.sp, color = Color(0xFFFFD700), fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(24.dp))
-                Button(
-                    onClick = onRestart,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3FB950))
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Play Again", fontWeight = FontWeight.Bold)
+                Button(onRestart, Modifier.fillMaxWidth().height(52.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3FB950))) {
+                    Icon(Icons.Default.Refresh, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("Play Again", fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = onMainMenu,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Main Menu", fontWeight = FontWeight.Bold)
+                OutlinedButton(onMainMenu, Modifier.fillMaxWidth().height(52.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
+                    Icon(Icons.Default.Home, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("Main Menu", fontWeight = FontWeight.Bold)
                 }
             }
         }
