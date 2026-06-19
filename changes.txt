@@ -113,3 +113,16 @@
 - Bumped to versionCode 5, versionName 1.3.0
 - Same ciphervault keystore for update compatibility
 - Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.3.0
+
+## 2026-06-19 - v1.4.0 Critical Rendering Fix
+
+- CRITICAL: Added frameTick state incremented every game loop iteration
+- Compose Canvas only redraws when state inputs change; engine is plain class
+- Without frameTick, Canvas drew once and never updated — bird/pipes/score frozen
+- frameTick forces Canvas recomposition every frame (60fps)
+- Bird color changed to red (#E74C3C) matching original Flappy Bird
+- Bird radius 20, wing animation via dedicated wingPhase counter
+- Physics: gravity=0.55, flap=-8.5, pipeGap=175, pipeSpeed=2.7
+- Bumped to versionCode 6, versionName 1.4.0
+- Same ciphervault keystore for update compatibility
+- Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.4.0
