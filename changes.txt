@@ -82,3 +82,16 @@
 - Bumped to versionCode 3, versionName 1.1.0
 - Same ciphervault keystore for update compatibility
 - Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.1.0
+
+## 2026-06-19 - v1.2.0 Classic Mode Authentic Clone
+
+- Classic mode now locked difficulty — no level progression, no gap shrinking
+- Physics tuned to match original Flappy Birds: gravity=0.55, flap=-8.5, pipeGap=180, pipeSpeed=3.0
+- Classic sky color #70C5DE (light blue), ground #DED895 (sandy tan), pipes #74BF2E (bright green)
+- Ground now has grass strip on top matching pipe color for authentic look
+- Bird: smaller radius (24), tighter collision box (0.85x), orange beak, no tail feathers
+- Challenge/Practice modes retain level progression and weapon systems
+- Weather changes less frequent (70% clear, 20% rain, 10% fog)
+- Bumped to versionCode 4, versionName 1.2.0
+- Same ciphervault keystore for update compatibility
+- Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.2.0
