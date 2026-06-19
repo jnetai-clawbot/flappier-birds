@@ -62,3 +62,23 @@
 - Bumped versionCode to 2, versionName to 1.0.1
 - Same ciphervault keystore for update compatibility
 - Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.0.1
+
+## 2026-06-19 - v1.1.0 Major Gameplay Overhaul
+
+- Fixed root crash: engine.init() was called every Canvas frame, resetting gameStarted
+- Added initDone flag so engine initializes only once
+- Rewrote GameEngine with proper Flappy Birds clone physics
+- Classic mode: green pipes, blue sky, standard gravity/flap — pure Flappy Birds
+- Challenge mode: red pipes, dark sky, faster speed, laser weapon (5 shots)
+- Practice mode: blue pipes, calm sky, slower speed, wider gaps
+- Weapon system: fire button (FAB) shoots projectiles that destroy pipes
+- Pipe destruction animation with debris particles
+- Level progression: every 10 points = new level, faster speed, tighter gaps
+- Proper bird rendering: body circle, white eye, black pupil, orange beak, wing flap animation, tail feathers
+- Per-mode color theming for sky, ground, pipes
+- Game Over overlay shows best score and level reached
+- HUD shows score, level number, coin count
+- Mode selector updated with weapon descriptions
+- Bumped to versionCode 3, versionName 1.1.0
+- Same ciphervault keystore for update compatibility
+- Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.1.0
