@@ -1,8 +1,9 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.jnetaol.flappierbirds.ui.screens.game
 
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -19,7 +20,6 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,53 +53,62 @@ fun GameScreen(
     var gameEndRecorded by remember { mutableStateOf(false) }
 
     val vibrator = remember {
-        if (hapticEnabled) {
-            try {
-                val vm = context.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-                vm?.defaultVibrator
-            } catch (_: Exception) {
-                context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
-            }
-        } else null
+        try {
+            context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
+        } catch (_: Exception) {
+            null
+        }
     }
 
     LaunchedEffect(Unit) {
-        engine.gameMode = gameMode
-        engine.init(screenWidth, screenHeight)
-        DebugLogger.i("FB-200", "Game started: mode=$gameMode", null)
+        try {
+            engine.gameMode = gameMode
+            engine.init(screenWidth, screenHeight)
+            DebugLogger.i("FB-200", "Game started: mode=$gameMode w=$screenWidth h=$screenHeight", null)
 
-        while (isActive) {
-            if (!engine.isPaused && !engine.isGameOver && engine.gameStarted) {
-                engine.update()
-                engine.increaseDifficulty()
-            }
+            while (isActive) {
+                try {
+                    if (!engine.isPaused && !engine.isGameOver && engine.gameStarted) {
+                        engine.update()
+                        engine.increaseDifficulty()
+                    }
 
-            frameCount++
-            val now = System.currentTimeMillis()
-            if (now - fpsTimer >= 1000) {
-                fps = frameCount
-                frameCount = 0
-                fpsTimer = now
-            }
+                    frameCount++
+                    val now = System.currentTimeMillis()
+                    if (now - fpsTimer >= 1000) {
+                        fps = frameCount
+                        frameCount = 0
+                        fpsTimer = now
+                    }
 
-            if (engine.isGameOver && !gameEndRecorded) {
-                gameEndRecorded = true
-                val duration = engine.getSessionDurationMs()
-                DebugLogger.i("FB-201", "Game over: score=${engine.score} coins=${engine.coins} duration=${duration}ms", null)
-                launch(Dispatchers.IO) {
-                    repository.recordGameEnd(
-                        mode = gameMode,
-                        score = engine.score,
-                        coins = engine.coins,
-                        flaps = engine.flaps,
-                        obstaclesPassed = engine.obstaclesPassed,
-                        sessionDurationMs = duration
-                    )
+                    if (engine.isGameOver && !gameEndRecorded) {
+                        gameEndRecorded = true
+                        val duration = engine.getSessionDurationMs()
+                        DebugLogger.i("FB-201", "Game over: score=${engine.score} coins=${engine.coins} duration=${duration}ms", null)
+                        launch(Dispatchers.IO) {
+                            try {
+                                repository.recordGameEnd(
+                                    mode = gameMode,
+                                    score = engine.score,
+                                    coins = engine.coins,
+                                    flaps = engine.flaps,
+                                    obstaclesPassed = engine.obstaclesPassed,
+                                    sessionDurationMs = duration
+                                )
+                            } catch (e: Exception) {
+                                DebugLogger.logException("FB-203", "Failed to record game end", e)
+                            }
+                        }
+                        onGameEnd(engine.score, engine.coins, engine.flaps, engine.obstaclesPassed, duration)
+                    }
+                } catch (e: Exception) {
+                    DebugLogger.logException("FB-210", "Game loop iteration error", e)
                 }
-                onGameEnd(engine.score, engine.coins, engine.flaps, engine.obstaclesPassed, duration)
-            }
 
-            delay(16L)
+                delay(16L)
+            }
+        } catch (e: Exception) {
+            DebugLogger.logException("FB-211", "Game loop fatal error", e)
         }
     }
 
@@ -132,24 +141,28 @@ fun GameScreen(
         Canvas(
             modifier = Modifier.fillMaxSize()
         ) {
-            screenWidth = size.width
-            screenHeight = size.height
-            if (!engine.gameStarted && !engine.isGameOver) {
-                engine.init(screenWidth, screenHeight)
-            }
+            try {
+                screenWidth = size.width
+                screenHeight = size.height
+                if (!engine.gameStarted && !engine.isGameOver) {
+                    engine.init(screenWidth, screenHeight)
+                }
 
-            drawGameBackground(engine, size)
-            drawClouds(engine, size)
-            drawPipes(engine, size)
-            drawCoins(engine, size)
-            drawGround(engine, size)
-            drawBird(engine, size)
-            drawParticles(engine, size)
-            drawWeatherEffects(engine, size)
-            drawHUD(engine, size)
+                drawGameBackground(engine, size)
+                drawClouds(engine, size)
+                drawPipes(engine, size)
+                drawCoins(engine, size)
+                drawGround(engine, size)
+                drawBird(engine, size)
+                drawParticles(engine, size)
+                drawWeatherEffects(engine, size)
+                drawHUD(engine, size)
 
-            if (!engine.gameStarted && !engine.isGameOver) {
-                drawStartPrompt(engine, size)
+                if (!engine.gameStarted && !engine.isGameOver) {
+                    drawStartPrompt(engine, size)
+                }
+            } catch (e: Exception) {
+                DebugLogger.logException("FB-220", "Canvas draw error", e)
             }
         }
 

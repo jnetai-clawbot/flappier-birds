@@ -10,12 +10,16 @@ import kotlinx.coroutines.launch
 
 class FlappierBirdsApp : Application() {
     val repository by lazy { GameRepository(this) }
-    val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
-        DebugLogger.init(this, enableExtraLogging = false)
-        DebugLogger.i("FB-000", "FlappierBirdsApp starting", null)
+        try {
+            DebugLogger.init(this, enableExtraLogging = false)
+            DebugLogger.i("FB-000", "FlappierBirdsApp starting", null)
+        } catch (e: Exception) {
+            android.util.Log.e("FlappierBirds", "Logger init failed", e)
+        }
 
         applicationScope.launch {
             try {
@@ -26,7 +30,11 @@ class FlappierBirdsApp : Application() {
             }
         }
 
-        val diagnostics = DebugLogger.runDiagnostics(this)
-        DebugLogger.i("FB-010", "Startup diagnostics: ${diagnostics.summary()}", null)
+        try {
+            val diagnostics = DebugLogger.runDiagnostics(this)
+            DebugLogger.i("FB-010", "Startup diagnostics: ${diagnostics.summary()}", null)
+        } catch (e: Exception) {
+            android.util.Log.e("FlappierBirds", "Diagnostics failed", e)
+        }
     }
 }
