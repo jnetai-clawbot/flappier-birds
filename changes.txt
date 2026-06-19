@@ -49,3 +49,16 @@
 - Release APK built successfully via GitHub Actions (1.37 MB)
 - APK signed with ciphervault keystore (v2/v3 APK Signing Block)
 - Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.0.0
+
+## 2026-06-19 - v1.0.1 Crash Fix
+
+- Wrapped game loop in try-catch with error codes FB-210/FB-211
+- Wrapped Canvas drawing in try-catch with error code FB-220
+- Wrapped recordGameEnd in try-catch with error code FB-203
+- Simplified vibrator init: removed VibratorManager (crashes on older APIs), use VIBRATOR_SERVICE directly
+- Added try-catch around DebugLogger.init and diagnostics in FlappierBirdsApp
+- Changed applicationScope dispatcher from Main to IO
+- Fixed missing LocalDensity import
+- Bumped versionCode to 2, versionName to 1.0.1
+- Same ciphervault keystore for update compatibility
+- Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.0.1
