@@ -68,12 +68,23 @@ fun GameScreen(
                     if (engine.isGameOver && !gameEndRecorded) {
                         gameEndRecorded = true
                         DebugLogger.i("FB-201", "Game over: score=${engine.score}", null)
+                        val finalDurationMs = engine.getSessionDurationMs()
+                        val finalFlaps = engine.flaps
+                        val finalObstacles = engine.obstaclesPassed
+                        val finalCoins = engine.score
                         launch(Dispatchers.IO) {
                             try {
-                                repository.recordGameEnd(mode = gameMode, score = engine.score, coins = 0, flaps = 0, obstaclesPassed = engine.score, sessionDurationMs = 0)
+                                repository.recordGameEnd(
+                                    mode = gameMode,
+                                    score = engine.score,
+                                    coins = finalCoins,
+                                    flaps = finalFlaps,
+                                    obstaclesPassed = finalObstacles,
+                                    sessionDurationMs = finalDurationMs
+                                )
                             } catch (_: Exception) {}
                         }
-                        onGameEnd(engine.score, 0, 0, engine.score, 0)
+                        onGameEnd(engine.score, finalCoins, finalFlaps, finalObstacles, finalDurationMs)
                     }
                 } catch (e: Exception) {
                     DebugLogger.logException("FB-210", "Game loop error", e)
@@ -86,7 +97,7 @@ fun GameScreen(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize().background(Color(0xFF0D1117))
+        modifier = Modifier.fillMaxSize().background(Color(0xFF70C5DE))
             .pointerInput(Unit) {
                 detectTapGestures(onTap = {
                     if (engine.isGameOver) { engine.resetGame(); gameEndRecorded = false }
@@ -110,8 +121,9 @@ fun GameScreen(
                 drawPipes(engine, size)
                 drawGround(engine, size)
                 drawBird(engine, size)
-                drawParticles(engine, size)
+                drawParticles(engine, size, graphicsQuality)
                 drawScore(engine, size)
+                if (showFps) drawFps(frameTick, size)
                 if (!engine.gameStarted && !engine.isGameOver) drawStartPrompt(engine, size)
             } catch (e: Exception) {
                 DebugLogger.logException("FB-220", "Canvas draw error", e)
@@ -196,11 +208,27 @@ private fun DrawScope.drawBird(engine: GameEngine, size: Size) {
     }
 }
 
-private fun DrawScope.drawParticles(engine: GameEngine, size: Size) {
-    for (p in engine.getParticles()) {
+private fun DrawScope.drawParticles(engine: GameEngine, size: Size, graphicsQuality: String) {
+    val maxParticles = when (graphicsQuality) {
+        "low" -> 6
+        "medium" -> 12
+        else -> Int.MAX_VALUE
+    }
+    for (p in engine.getParticles().take(maxParticles)) {
         val a = (p.life / p.maxLife).coerceIn(0f, 1f)
         drawCircle(Color(p.color).copy(alpha = a), p.size * a, Offset(p.x, p.y))
     }
+}
+
+private fun DrawScope.drawFps(frameTick: Int, size: Size) {
+    val fp = android.graphics.Paint().apply {
+        color = android.graphics.Color.WHITE
+        textSize = 28f
+        isAntiAlias = true
+        textAlign = android.graphics.Paint.Align.LEFT
+        setShadowLayer(1f, 0f, 1f, android.graphics.Color.BLACK)
+    }
+    drawContext.canvas.nativeCanvas.drawText("Frame: $frameTick", 16f, size.height - 24f, fp)
 }
 
 private fun DrawScope.drawScore(engine: GameEngine, size: Size) {

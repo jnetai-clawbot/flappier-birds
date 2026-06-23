@@ -204,7 +204,7 @@ private fun ModeSelectorDialog(
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text("Challenge", fontWeight = FontWeight.Bold)
-                        Text("Faster + laser weapon to blast pipes", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
+                        Text("Faster speed, tighter gaps, harder timing", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
                     }
                 }
                 Spacer(Modifier.height(8.dp))

@@ -22,14 +22,17 @@ class GameEngine {
     var gameStarted = false
     var gameMode = "endless"
     var initialized = false
+    var flaps = 0
+    var sessionFrames = 0L
+    var obstaclesPassed = 0
 
-    private val gravity = 0.55f
-    private val flapStrength = -9f
-    private val maxVelocity = 13f
-    private val minVelocity = -11f
-    private val pipeWidth = 80f
-    private val pipeGap = 200f
-    private val pipeSpeed = 2.8f
+    private var gravity = 0.55f
+    private var flapStrength = -9f
+    private var maxVelocity = 13f
+    private var minVelocity = -11f
+    private var pipeWidth = 80f
+    private var pipeGap = 200f
+    private var pipeSpeed = 2.8f
     private val groundHeight = 140f
 
     private val pipes = mutableListOf<Pipe>()
@@ -53,6 +56,7 @@ class GameEngine {
     }
 
     fun resetGame() {
+        applyModeConfig()
         birdX = screenWidth * 0.22f
         birdY = screenHeight * 0.45f
         birdVelocity = 0f
@@ -67,12 +71,16 @@ class GameEngine {
         wingPhase = 0f
         pipes.clear()
         particles.clear()
+        flaps = 0
+        sessionFrames = 0
+        obstaclesPassed = 0
     }
 
     fun flap() {
         if (isGameOver) return
         if (!gameStarted) gameStarted = true
         birdVelocity = flapStrength
+        flaps += 1
     }
 
     fun update() {
@@ -86,6 +94,7 @@ class GameEngine {
         }
 
         if (isPaused || isGameOver) return
+        sessionFrames += 1
 
         birdVelocity += gravity
         birdVelocity = birdVelocity.coerceIn(minVelocity, maxVelocity)
@@ -117,7 +126,12 @@ class GameEngine {
         while (it.hasNext()) {
             val p = it.next()
             p.x -= pipeSpeed
-            if (!p.passed && p.x + pipeWidth < birdX) { p.passed = true; score++; spawnScoreParticles(p.x + pipeWidth / 2, p.topHeight + pipeGap / 2) }
+            if (!p.passed && p.x + pipeWidth < birdX) {
+                p.passed = true
+                score++
+                obstaclesPassed++
+                spawnScoreParticles(p.x + pipeWidth / 2, p.topHeight + pipeGap / 2)
+            }
             if (p.x + pipeWidth < -60f) it.remove()
         }
     }
@@ -154,6 +168,38 @@ class GameEngine {
         if (score > bestScore) bestScore = score
     }
 
+    private fun applyModeConfig() {
+        when (gameMode) {
+            "practice" -> {
+                gravity = 0.5f
+                flapStrength = -8.6f
+                maxVelocity = 12f
+                minVelocity = -10f
+                pipeWidth = 78f
+                pipeGap = 250f
+                pipeSpeed = 2.2f
+            }
+            "challenge" -> {
+                gravity = 0.62f
+                flapStrength = -9.2f
+                maxVelocity = 14f
+                minVelocity = -11.5f
+                pipeWidth = 88f
+                pipeGap = 180f
+                pipeSpeed = 3.4f
+            }
+            else -> {
+                gravity = 0.55f
+                flapStrength = -9f
+                maxVelocity = 13f
+                minVelocity = -11f
+                pipeWidth = 80f
+                pipeGap = 200f
+                pipeSpeed = 2.8f
+            }
+        }
+    }
+
     fun getWingPhase(): Float = wingPhase
 
     private fun spawnScoreParticles(x: Float, y: Float) {
@@ -181,4 +227,5 @@ class GameEngine {
     fun getGroundHeight(): Float = groundHeight
     fun getPipeGap(): Float = pipeGap
     fun getPipeWidth(): Float = pipeWidth
+    fun getSessionDurationMs(): Long = sessionFrames * 16L
 }

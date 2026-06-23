@@ -1,4 +1,4 @@
-name: Build Release APK
+name: Build Release
 on:
   push:
     tags: ['v*']
@@ -6,11 +6,11 @@ on:
     inputs:
       version:
         description: 'Version (e.g. 1.0.0)'
-        required: true
-        default: '1.0.0'
+        required: false
+        default: ''
 jobs:
   build-release:
-    name: Build & Publish Release
+    name: Build and publish release
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -24,7 +24,8 @@ jobs:
         id: version
         run: |
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          else echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT; fi
+          elif [[ -n "${{ github.event.inputs.version }}" ]]; then echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else echo "version=0.1.${{ github.run_number }}" >> $GITHUB_OUTPUT; fi
       - name: Decode Keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -45,8 +46,10 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
+          VERSION_CODE=$(echo "$VERSION" | tr -cd '0-9')
+          if [[ -z "$VERSION_CODE" ]]; then VERSION_CODE="${{ github.run_number }}"; fi
           sed -i "s/versionName = \".*\"/versionName = \"$VERSION\"/" app/build.gradle.kts
-          sed -i "s/versionCode = .*/versionCode = $(echo $VERSION | tr -d '.' | tr -cd '0-9')/" app/build.gradle.kts
+          sed -i "s/versionCode = .*/versionCode = $VERSION_CODE/" app/build.gradle.kts
       - env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -55,18 +58,24 @@ jobs:
           export KEYSTORE_PASSWORD="${KEYSTORE_PASSWORD:-changeit}"
           export KEY_ALIAS="${KEY_ALIAS:-ciphervault}"
           export KEY_PASSWORD="${KEY_PASSWORD:-changeit}"
-          ./gradlew assembleRelease --stacktrace
-      - run: |
+          ./gradlew clean assembleRelease bundleRelease --stacktrace
+      - name: Stage release files
+        run: |
           mkdir -p apk
-          cp app/build/outputs/apk/release/app-release.apk "apk/Flappier-Birds.apk"
+          cp app/build/outputs/apk/release/app-release.apk "apk/Flappier-Birds-${{ steps.version.outputs.version }}.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "apk/Flappier-Birds-${{ steps.version.outputs.version }}.aab"
       - uses: actions/upload-artifact@v4
         with:
           name: Flappier-Birds-Release
-          path: app/build/outputs/apk/release/app-release.apk
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
       - uses: softprops/action-gh-release@v1
         with:
           name: "Flappier Birds v${{ steps.version.outputs.version }}"
-          files: apk/Flappier-Birds.apk
+          files: |
+            apk/Flappier-Birds-${{ steps.version.outputs.version }}.apk
+            apk/Flappier-Birds-${{ steps.version.outputs.version }}.aab
           tag_name: ${{ github.ref_name || format('v{0}', steps.version.outputs.version) }}
           generate_release_notes: true
         env:
