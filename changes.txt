@@ -127,7 +127,21 @@
 - Same ciphervault keystore for update compatibility
 - Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.4.0
 
-## 2026-06-23 - Release APK workflow fix
+## 2026-06-23 - Classic Flappy Bird gameplay rebuild
+
+- Rebuilt GameEngine around original 288x512 virtual resolution with screen scaling
+- Classic mode now uses original-style gravity, flap strength, pipe width/gap/speed, and ground height
+- Pipes are pre-spawned and visible before the first tap; ground scrolls during Get Ready
+- Rebuilt GameScreen rendering with classic sky, clouds, skyline, green pipes, tan ground, and yellow bird
+- Fixed animation loop using withFrameNanos and explicit frameTick reads so Canvas redraws every frame
+- Score and Get Ready / Tap to Flap prompts now scale correctly with device density
+
+## 2026-06-23 - Responsive viewport scaling
+
+- Added GameViewport to uniformly scale the 288x512 playfield to any screen with letterboxing
+- Game logic now runs entirely in virtual coordinates; rendering transforms to device pixels
+- Text, overlays, and UI dialogs now scale with screen width for phones and tablets
+- Locked gameplay to portrait and handle density/size config changes without restarting the app
 
 - Removed AAB bundle build from release workflow; releases now publish installable APK only
 - Release workflow verifies APK exists before upload and names asset `apk/Flappier-Birds.apk`
