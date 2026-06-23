@@ -36,6 +36,7 @@ import com.jnetaol.flappierbirds.logger.DebugLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.sin
 
 @Composable
@@ -56,6 +57,7 @@ fun GameScreen(
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     var showPauseMenu by remember { mutableStateOf(false) }
     var gameEndRecorded by remember { mutableStateOf(false) }
+    var sessionStartBest by remember { mutableIntStateOf(0) }
 
     val viewport = remember(canvasSize) {
         GameViewport.from(
@@ -77,6 +79,8 @@ fun GameScreen(
 
         engine.gameMode = gameMode
         engine.difficulty = Difficulty.fromId(difficulty)
+        sessionStartBest = withContext(Dispatchers.IO) { repository.getHighestScore() }
+        engine.bestScore = sessionStartBest
         engine.init()
         DebugLogger.i(
             "FB-200",
@@ -123,6 +127,7 @@ fun GameScreen(
             .pointerInput(Unit) {
                 detectTapGestures(onTap = {
                     if (engine.isGameOver) {
+                        sessionStartBest = engine.bestScore
                         engine.resetGame()
                         gameEndRecorded = false
                     } else if (showPauseMenu) {
@@ -167,6 +172,7 @@ fun GameScreen(
                 }
 
                 drawScore(engine, viewport)
+                drawHud(engine, viewport)
                 if (showFps) drawFps(tick, viewport)
                 if (!engine.gameStarted && !engine.isGameOver) {
                     drawStartPrompt(engine, viewport)
@@ -179,16 +185,26 @@ fun GameScreen(
         if (showPauseMenu) {
             PauseOverlay(
                 onResume = { showPauseMenu = false; engine.isPaused = false },
-                onRestart = { showPauseMenu = false; engine.resetGame(); gameEndRecorded = false },
+                onRestart = { showPauseMenu = false; sessionStartBest = engine.bestScore; engine.resetGame(); gameEndRecorded = false },
                 onMainMenu = onNavigateBack
             )
+        }
+
+        if (engine.isLevelTransition) {
+            LevelUpOverlay(level = engine.currentLevel)
         }
 
         if (engine.isGameOver) {
             GameOverOverlay(
                 score = engine.score,
                 bestScore = engine.bestScore,
-                onRestart = { engine.resetGame(); gameEndRecorded = false },
+                isNewHighScore = engine.score > sessionStartBest,
+                levelReached = engine.currentLevel,
+                onRestart = {
+                    sessionStartBest = engine.bestScore
+                    engine.resetGame()
+                    gameEndRecorded = false
+                },
                 onMainMenu = onNavigateBack
             )
         }
@@ -425,8 +441,58 @@ private fun DrawScope.drawStartPrompt(engine: GameEngine, viewport: GameViewport
     }
 
     val centerX = viewport.toScreenX(viewport.virtualWidth / 2f)
-    drawContext.canvas.nativeCanvas.drawText("Get Ready", centerX, viewport.toScreenY(132f), titlePaint)
-    drawContext.canvas.nativeCanvas.drawText("Tap to Flap", centerX, viewport.toScreenY(170f), tapPaint)
+    drawContext.canvas.nativeCanvas.drawText("Get Ready", centerX, viewport.toScreenY(120f), titlePaint)
+    drawContext.canvas.nativeCanvas.drawText("Tap to Flap", centerX, viewport.toScreenY(158f), tapPaint)
+    drawContext.canvas.nativeCanvas.drawText(
+        "Level 1 starts easy — gets harder!",
+        centerX,
+        viewport.toScreenY(196f),
+        android.graphics.Paint().apply {
+            color = android.graphics.Color.WHITE
+            textSize = viewport.textSize(16f)
+            textAlign = android.graphics.Paint.Align.CENTER
+            isAntiAlias = true
+            alpha = 190
+        }
+    )
+}
+
+private fun DrawScope.drawHud(engine: GameEngine, viewport: GameViewport) {
+    val labelPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.WHITE
+        textSize = viewport.textSize(18f)
+        isFakeBoldText = true
+        isAntiAlias = true
+        setShadowLayer(3f, 1f, 1f, android.graphics.Color.argb(100, 0, 0, 0))
+    }
+
+    val smallPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.WHITE
+        textSize = viewport.textSize(14f)
+        isAntiAlias = true
+        setShadowLayer(2f, 1f, 1f, android.graphics.Color.argb(90, 0, 0, 0))
+    }
+
+    val levelX = viewport.toScreenX(16f)
+    val levelY = viewport.toScreenY(28f)
+    drawContext.canvas.nativeCanvas.drawText("Level ${engine.currentLevel}", levelX, levelY, labelPaint)
+
+    if (engine.gameMode == "endless" && engine.gameStarted && !engine.isGameOver) {
+        val required = engine.pipesRequiredThisLevel()
+        val progress = "${engine.pipesThisLevel}/$required"
+        drawContext.canvas.nativeCanvas.drawText(progress, levelX, viewport.toScreenY(48f), smallPaint)
+    }
+
+    val bestText = "Best ${engine.bestScore}"
+    val bestPaint = android.graphics.Paint(smallPaint).apply {
+        textAlign = android.graphics.Paint.Align.RIGHT
+    }
+    drawContext.canvas.nativeCanvas.drawText(
+        bestText,
+        viewport.toScreenX(viewport.virtualWidth - 16f),
+        viewport.toScreenY(28f),
+        bestPaint
+    )
 }
 
 private fun DrawScope.drawFps(frameTick: Int, viewport: GameViewport) {
@@ -499,7 +565,39 @@ private fun PauseOverlay(onResume: () -> Unit, onRestart: () -> Unit, onMainMenu
 }
 
 @Composable
-private fun GameOverOverlay(score: Int, bestScore: Int, onRestart: () -> Unit, onMainMenu: () -> Unit) {
+private fun LevelUpOverlay(level: Int) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.45f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)),
+            modifier = Modifier.padding(24.dp)
+        ) {
+            Column(
+                Modifier.padding(horizontal = 32.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Level $level!", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFD700))
+                Spacer(Modifier.height(8.dp))
+                Text("Faster pipes • smaller gaps", fontSize = 14.sp, color = Color(0xFF8B949E))
+            }
+        }
+    }
+}
+
+@Composable
+private fun GameOverOverlay(
+    score: Int,
+    bestScore: Int,
+    isNewHighScore: Boolean,
+    levelReached: Int,
+    onRestart: () -> Unit,
+    onMainMenu: () -> Unit
+) {
     Box(
         Modifier
             .fillMaxSize()
@@ -516,9 +614,15 @@ private fun GameOverOverlay(score: Int, bestScore: Int, onRestart: () -> Unit, o
         ) {
             Column(Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Game Over", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF85149))
+                if (isNewHighScore) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("New High Score!", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFD700))
+                }
                 Spacer(Modifier.height(16.dp))
                 Text("Score", fontSize = 14.sp, color = Color(0xFF8B949E))
                 Text("$score", fontSize = 48.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Spacer(Modifier.height(4.dp))
+                Text("Level reached: $levelReached", fontSize = 14.sp, color = Color(0xFF8B949E))
                 Spacer(Modifier.height(4.dp))
                 Text("Best: $bestScore", fontSize = 16.sp, color = Color(0xFFD29922), fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(24.dp))

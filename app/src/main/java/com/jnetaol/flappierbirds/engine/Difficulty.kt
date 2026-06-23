@@ -45,7 +45,7 @@ enum class Difficulty(
     )
 
     companion object {
-        val DEFAULT = EXTREME
+        val DEFAULT = EASY
 
         fun fromId(id: String): Difficulty =
             entries.find { it.id == id } ?: DEFAULT

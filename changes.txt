@@ -150,6 +150,13 @@
 - Settings screen now includes Difficulty Level picker under Gameplay
 - Difficulty preference is saved to DataStore and applied to all game modes
 
+## 2026-06-23 - Progressive level difficulty and high score
+
+- Classic mode now starts super easy with wide gaps, low gravity, and forgiving hitboxes
+- Difficulty ramps within each level as pipes are cleared; completing a level advances to faster, tighter gameplay
+- Added on-screen level progress, best score HUD, level-up flash, and new high score celebration
+- Settings difficulty now controls ramp speed; default changed to Easy
+
 - Removed AAB bundle build from release workflow; releases now publish installable APK only
 - Release workflow verifies APK exists before upload and names asset `apk/Flappier-Birds.apk`
 - Replaced debug APK push workflow with signed release APK build on main push

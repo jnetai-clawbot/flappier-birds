@@ -166,7 +166,10 @@ fun SettingsScreen(
                     Icon(Icons.Default.Tune, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(12.dp))
                     Text("Difficulty Level", modifier = Modifier.weight(1f), color = Color.White, fontWeight = FontWeight.Medium)
-                    Text(difficultyLabel, color = Color(0xFF8B949E), fontSize = 14.sp)
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(difficultyLabel, color = Color(0xFF8B949E), fontSize = 14.sp)
+                        Text("Ramp speed", color = Color(0xFF6E7681), fontSize = 11.sp)
+                    }
                     IconButton(onClick = { showDifficultyDialog = true }) {
                         Icon(Icons.Default.Edit, contentDescription = "Change", tint = Color(0xFF58A6FF), modifier = Modifier.size(20.dp))
                     }

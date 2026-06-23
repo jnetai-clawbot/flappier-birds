@@ -30,6 +30,9 @@ class GameRepository(private val context: Context) {
         }
     }
 
+    suspend fun getHighestScore(): Int =
+        db.gameStatsDao().getStatsOnce()?.highestScore ?: 0
+
     val stats: Flow<GameStats?> = db.gameStatsDao().getStats()
     val achievements: Flow<List<Achievement>> = db.achievementDao().getAll()
     val birdSkins: Flow<List<UnlockableItem>> = db.unlockableItemDao().getByType("bird_skin")

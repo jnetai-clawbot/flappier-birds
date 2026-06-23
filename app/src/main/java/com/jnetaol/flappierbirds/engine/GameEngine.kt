@@ -4,8 +4,8 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * Classic Flappy Bird engine operating in a fixed 288x512 virtual coordinate space.
- * Screen scaling is handled separately by [GameViewport].
+ * Classic Flappy Bird engine in a fixed 288x512 virtual coordinate space.
+ * Endless/classic mode uses progressive levels that get harder over time.
  */
 class GameEngine {
     var screenWidth = GameViewport.VIRTUAL_WIDTH
@@ -20,25 +20,31 @@ class GameEngine {
     var score = 0
     var bestScore = 0
 
+    var currentLevel = 1
+    var pipesThisLevel = 0
+    var levelUpFlashFrames = 0
+
     var isGameOver = false
     var isPaused = false
+    var isLevelTransition = false
     var gameStarted = false
     var gameMode = "endless"
-    var difficulty = Difficulty.EXTREME
+    var difficulty = Difficulty.EASY
     var initialized = false
     var flaps = 0
     var sessionFrames = 0L
     var obstaclesPassed = 0
 
-    private var gravity = 0.45f
-    private var flapStrength = -7.8f
-    private var maxVelocity = 10f
-    private var minVelocity = -8.5f
-    private var pipeWidth = 52f
-    private var pipeGap = 100f
-    private var pipeSpeed = 2.4f
+    private var gravity = 0.18f
+    private var flapStrength = -5.8f
+    private var maxVelocity = 7.5f
+    private var minVelocity = -6.8f
+    private var pipeWidth = 50f
+    private var pipeGap = 178f
+    private var pipeSpeed = 1.2f
     private var groundHeight = 112f
-    private var pipeSpawnDistance = 170f
+    private var pipeSpawnDistance = 210f
+    private var collisionInset = 0.22f
 
     private val pipes = mutableListOf<Pipe>()
     private val particles = mutableListOf<Particle>()
@@ -70,13 +76,15 @@ class GameEngine {
     fun init() {
         screenWidth = GameViewport.VIRTUAL_WIDTH
         screenHeight = GameViewport.VIRTUAL_HEIGHT
-        applyModeConfig()
         resetGame()
         initialized = true
     }
 
     fun resetGame() {
-        applyModeConfig()
+        currentLevel = 1
+        pipesThisLevel = 0
+        levelUpFlashFrames = 0
+        isLevelTransition = false
 
         birdX = screenWidth * 0.25f
         birdY = screenHeight * 0.42f
@@ -87,7 +95,6 @@ class GameEngine {
         isPaused = false
         gameStarted = false
         groundScroll = 0f
-        distanceSinceLastPipe = pipeSpawnDistance
         bobTimer = 0f
         wingPhase = 0f
         pipes.clear()
@@ -96,12 +103,14 @@ class GameEngine {
         sessionFrames = 0
         obstaclesPassed = 0
 
+        applyPhysics()
+        distanceSinceLastPipe = pipeSpawnDistance
         spawnPipe(screenWidth * 0.65f)
         spawnPipe(screenWidth * 1.15f)
     }
 
     fun flap() {
-        if (isGameOver || isPaused) return
+        if (isGameOver || isPaused || isLevelTransition) return
         if (!gameStarted) gameStarted = true
         birdVelocity = flapStrength
         flaps += 1
@@ -113,6 +122,14 @@ class GameEngine {
         bobTimer += 1f
         wingPhase += 0.35f
         groundScroll += if (gameStarted && !isGameOver && !isPaused) pipeSpeed else pipeSpeed * 0.35f
+
+        if (isLevelTransition) {
+            levelUpFlashFrames--
+            if (levelUpFlashFrames <= 0) {
+                isLevelTransition = false
+            }
+            return
+        }
 
         if (!gameStarted && !isGameOver) {
             birdY = screenHeight * 0.42f + sin(bobTimer * 0.08f) * 8f
@@ -157,6 +174,7 @@ class GameEngine {
                 pipe.passed = true
                 score += 1
                 obstaclesPassed += 1
+                onPipeCleared()
             }
 
             if (pipe.x + pipeWidth < -pipeWidth) {
@@ -165,8 +183,32 @@ class GameEngine {
         }
     }
 
+    private fun onPipeCleared() {
+        if (!usesLevelProgression()) {
+            applyPhysics()
+            return
+        }
+
+        pipesThisLevel += 1
+        applyPhysics()
+
+        val required = LevelProgression.pipesRequiredForLevel(currentLevel)
+        if (pipesThisLevel >= required) {
+            advanceLevel()
+        }
+    }
+
+    private fun advanceLevel() {
+        currentLevel += 1
+        pipesThisLevel = 0
+        isLevelTransition = true
+        levelUpFlashFrames = 90
+        applyPhysics()
+        distanceSinceLastPipe = 0f
+    }
+
     private fun spawnPipe(startX: Float) {
-        val margin = 48f
+        val margin = 40f
         val minTop = margin
         val maxTop = playableBottom() - pipeGap - margin
         if (maxTop <= minTop) return
@@ -194,7 +236,7 @@ class GameEngine {
     }
 
     private fun checkCollisions() {
-        val inset = birdRadius * 0.15f
+        val inset = birdRadius * collisionInset
         val left = birdX - birdRadius + inset
         val right = birdX + birdRadius - inset
         val top = birdY - birdRadius + inset
@@ -220,80 +262,64 @@ class GameEngine {
 
     private fun playableBottom(): Float = screenHeight - groundHeight
 
-    private fun applyModeConfig() {
-        val baseGravity: Float
-        val baseFlap: Float
-        val baseMaxVelocity: Float
-        val baseMinVelocity: Float
-        val basePipeWidth: Float
-        val basePipeGap: Float
-        val basePipeSpeed: Float
-        val baseGroundHeight: Float
-        val basePipeSpawnDistance: Float
-        val baseBirdRadius: Float
+    private fun usesLevelProgression(): Boolean = gameMode == "endless"
 
-        when (gameMode) {
-            "practice" -> {
-                baseGravity = 0.38f
-                baseFlap = -7.2f
-                baseMaxVelocity = 9.5f
-                baseMinVelocity = -8f
-                basePipeWidth = 50f
-                basePipeGap = 128f
-                basePipeSpeed = 2f
-                baseGroundHeight = 112f
-                basePipeSpawnDistance = 185f
-                baseBirdRadius = 17f
-            }
-
-            "challenge" -> {
-                baseGravity = 0.5f
-                baseFlap = -8.2f
-                baseMaxVelocity = 11f
-                baseMinVelocity = -9f
-                basePipeWidth = 54f
-                basePipeGap = 92f
-                basePipeSpeed = 2.9f
-                baseGroundHeight = 112f
-                basePipeSpawnDistance = 155f
-                baseBirdRadius = 17f
-            }
-
-            else -> {
-                baseGravity = 0.45f
-                baseFlap = -7.8f
-                baseMaxVelocity = 10f
-                baseMinVelocity = -8.5f
-                basePipeWidth = 52f
-                basePipeGap = 100f
-                basePipeSpeed = 2.4f
-                baseGroundHeight = 112f
-                basePipeSpawnDistance = 170f
-                baseBirdRadius = 17f
-            }
+    private fun applyPhysics() {
+        val physics = if (usesLevelProgression()) {
+            LevelProgression.resolve(currentLevel, pipesThisLevel, difficulty)
+        } else {
+            fixedModePhysics()
         }
 
-        val tuned = difficulty.applyTo(
-            gravity = baseGravity,
-            flapStrength = baseFlap,
-            pipeGap = basePipeGap,
-            pipeSpeed = basePipeSpeed,
-            pipeSpawnDistance = basePipeSpawnDistance,
-            maxVelocity = baseMaxVelocity,
-            minVelocity = baseMinVelocity
-        )
-
-        gravity = tuned.gravity
-        flapStrength = tuned.flapStrength
-        maxVelocity = tuned.maxVelocity
-        minVelocity = tuned.minVelocity
-        pipeWidth = basePipeWidth
-        pipeGap = tuned.pipeGap.coerceAtLeast(56f)
-        pipeSpeed = tuned.pipeSpeed
-        groundHeight = baseGroundHeight
-        pipeSpawnDistance = tuned.pipeSpawnDistance.coerceAtLeast(120f)
-        birdRadius = baseBirdRadius
+        gravity = physics.gravity
+        flapStrength = physics.flapStrength
+        maxVelocity = physics.maxVelocity
+        minVelocity = physics.minVelocity
+        pipeWidth = physics.pipeWidth
+        pipeGap = physics.pipeGap
+        pipeSpeed = physics.pipeSpeed
+        groundHeight = physics.groundHeight
+        pipeSpawnDistance = physics.pipeSpawnDistance
+        birdRadius = physics.birdRadius
+        collisionInset = physics.collisionInset
     }
+
+    private fun fixedModePhysics(): LevelProgression.Physics {
+        val base = when (gameMode) {
+            "practice" -> LevelProgression.Physics(
+                gravity = 0.24f,
+                flapStrength = -6.2f,
+                maxVelocity = 8.5f,
+                minVelocity = -7.2f,
+                pipeGap = 165f,
+                pipeSpeed = 1.5f,
+                pipeSpawnDistance = 200f,
+                collisionInset = 0.2f
+            )
+
+            "challenge" -> LevelProgression.Physics(
+                gravity = 0.34f,
+                flapStrength = -7f,
+                maxVelocity = 9.5f,
+                minVelocity = -8f,
+                pipeGap = 120f,
+                pipeSpeed = 2.2f,
+                pipeSpawnDistance = 165f,
+                collisionInset = 0.12f
+            )
+
+            else -> LevelProgression.resolve(3, 0, difficulty)
+        }
+
+        return LevelProgression.applyWithinLevelRamp(
+            base = base,
+            pipesCleared = pipesThisLevel,
+            pipesRequired = LevelProgression.pipesRequiredForLevel(currentLevel),
+            rampMult = LevelProgression.rampMultiplier(difficulty) * 0.8f
+        )
+    }
+
+    fun pipesRequiredThisLevel(): Int = LevelProgression.pipesRequiredForLevel(currentLevel)
 
     fun getWingPhase(): Float = wingPhase
     fun getPipes(): List<Pipe> = pipes
