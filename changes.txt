@@ -126,3 +126,12 @@
 - Bumped to versionCode 6, versionName 1.4.0
 - Same ciphervault keystore for update compatibility
 - Release published at: https://github.com/jnetai-clawbot/flappier-birds/releases/tag/v1.4.0
+
+## 2026-06-23 - Release APK workflow fix
+
+- Removed AAB bundle build from release workflow; releases now publish installable APK only
+- Release workflow verifies APK exists before upload and names asset `apk/Flappier-Birds.apk`
+- Replaced debug APK push workflow with signed release APK build on main push
+- CI commits `apk/Flappier-Birds.apk` back to the repository after successful builds
+- Updated `.gitignore` to track `apk/Flappier-Birds.apk` while ignoring other apk files
+- Added `apk/.gitkeep` placeholder directory

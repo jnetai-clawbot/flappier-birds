@@ -1,16 +1,16 @@
-name: Build Release
+name: Build Release APK
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version (e.g. 1.0.0)'
+        description: 'Version (e.g. 1.5.1)'
         required: false
         default: ''
 jobs:
   build-release:
-    name: Build and publish release
+    name: Build and publish release APK
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -23,9 +23,13 @@ jobs:
       - name: Determine Version
         id: version
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          elif [[ -n "${{ github.event.inputs.version }}" ]]; then echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else echo "version=0.1.${{ github.run_number }}" >> $GITHUB_OUTPUT; fi
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=0.1.${{ github.run_number }}" >> $GITHUB_OUTPUT
+          fi
       - name: Decode Keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -50,7 +54,8 @@ jobs:
           if [[ -z "$VERSION_CODE" ]]; then VERSION_CODE="${{ github.run_number }}"; fi
           sed -i "s/versionName = \".*\"/versionName = \"$VERSION\"/" app/build.gradle.kts
           sed -i "s/versionCode = .*/versionCode = $VERSION_CODE/" app/build.gradle.kts
-      - env:
+      - name: Build signed release APK
+        env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -58,25 +63,38 @@ jobs:
           export KEYSTORE_PASSWORD="${KEYSTORE_PASSWORD:-changeit}"
           export KEY_ALIAS="${KEY_ALIAS:-ciphervault}"
           export KEY_PASSWORD="${KEY_PASSWORD:-changeit}"
-          ./gradlew clean assembleRelease bundleRelease --stacktrace
-      - name: Stage release files
+          ./gradlew clean assembleRelease --stacktrace
+      - name: Verify and stage APK
         run: |
+          APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          if [ ! -f "$APK_PATH" ]; then
+            echo "Release APK was not produced at $APK_PATH"
+            ls -la app/build/outputs/apk/release/ || true
+            exit 1
+          fi
           mkdir -p apk
-          cp app/build/outputs/apk/release/app-release.apk "apk/Flappier-Birds-${{ steps.version.outputs.version }}.apk"
-          cp app/build/outputs/bundle/release/app-release.aab "apk/Flappier-Birds-${{ steps.version.outputs.version }}.aab"
+          cp "$APK_PATH" apk/Flappier-Birds.apk
+          ls -lh apk/Flappier-Birds.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Flappier-Birds-Release
-          path: |
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/bundle/release/app-release.aab
-      - uses: softprops/action-gh-release@v1
+          name: Flappier-Birds-Release-APK
+          path: apk/Flappier-Birds.apk
+      - uses: softprops/action-gh-release@v2
         with:
           name: "Flappier Birds v${{ steps.version.outputs.version }}"
-          files: |
-            apk/Flappier-Birds-${{ steps.version.outputs.version }}.apk
-            apk/Flappier-Birds-${{ steps.version.outputs.version }}.aab
+          files: apk/Flappier-Birds.apk
           tag_name: ${{ github.ref_name || format('v{0}', steps.version.outputs.version) }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit APK to repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apk/Flappier-Birds.apk
+          if git diff --staged --quiet; then
+            echo "APK unchanged, skipping commit"
+          else
+            git commit -m "ci: update release APK to v${{ steps.version.outputs.version }} [skip ci]"
+            git push
+          fi
