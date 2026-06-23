@@ -33,6 +33,13 @@
     <string name="settings_haptic">Haptic Feedback</string>
     <string name="settings_graphics">Graphics Quality</string>
     <string name="settings_fps">Show FPS</string>
+    <string name="settings_difficulty">Difficulty Level</string>
+    <string name="difficulty_too_easy">Too Easy</string>
+    <string name="difficulty_easy">Easy</string>
+    <string name="difficulty_mid">Mid</string>
+    <string name="difficulty_hard">Hard</string>
+    <string name="difficulty_extreme">Extreme</string>
+    <string name="difficulty_impossible">Impossible</string>
     <string name="settings_debug">Debug Mode</string>
     <string name="about_made_by">Made by jnetai.com</string>
     <string name="about_version">Version</string>

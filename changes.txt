@@ -143,6 +143,13 @@
 - Text, overlays, and UI dialogs now scale with screen width for phones and tablets
 - Locked gameplay to portrait and handle density/size config changes without restarting the app
 
+## 2026-06-23 - Difficulty level setting
+
+- Added Difficulty enum with six levels: Too Easy, Easy, Mid, Hard, Extreme, Impossible
+- Extreme matches previous default gameplay; Impossible is tighter gaps and faster pipes
+- Settings screen now includes Difficulty Level picker under Gameplay
+- Difficulty preference is saved to DataStore and applied to all game modes
+
 - Removed AAB bundle build from release workflow; releases now publish installable APK only
 - Release workflow verifies APK exists before upload and names asset `apk/Flappier-Birds.apk`
 - Replaced debug APK push workflow with signed release APK build on main push

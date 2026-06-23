@@ -24,6 +24,7 @@ class GameEngine {
     var isPaused = false
     var gameStarted = false
     var gameMode = "endless"
+    var difficulty = Difficulty.EXTREME
     var initialized = false
     var flaps = 0
     var sessionFrames = 0L
@@ -220,46 +221,78 @@ class GameEngine {
     private fun playableBottom(): Float = screenHeight - groundHeight
 
     private fun applyModeConfig() {
+        val baseGravity: Float
+        val baseFlap: Float
+        val baseMaxVelocity: Float
+        val baseMinVelocity: Float
+        val basePipeWidth: Float
+        val basePipeGap: Float
+        val basePipeSpeed: Float
+        val baseGroundHeight: Float
+        val basePipeSpawnDistance: Float
+        val baseBirdRadius: Float
+
         when (gameMode) {
             "practice" -> {
-                gravity = 0.38f
-                flapStrength = -7.2f
-                maxVelocity = 9.5f
-                minVelocity = -8f
-                pipeWidth = 50f
-                pipeGap = 128f
-                pipeSpeed = 2f
-                groundHeight = 112f
-                pipeSpawnDistance = 185f
-                birdRadius = 17f
+                baseGravity = 0.38f
+                baseFlap = -7.2f
+                baseMaxVelocity = 9.5f
+                baseMinVelocity = -8f
+                basePipeWidth = 50f
+                basePipeGap = 128f
+                basePipeSpeed = 2f
+                baseGroundHeight = 112f
+                basePipeSpawnDistance = 185f
+                baseBirdRadius = 17f
             }
 
             "challenge" -> {
-                gravity = 0.5f
-                flapStrength = -8.2f
-                maxVelocity = 11f
-                minVelocity = -9f
-                pipeWidth = 54f
-                pipeGap = 92f
-                pipeSpeed = 2.9f
-                groundHeight = 112f
-                pipeSpawnDistance = 155f
-                birdRadius = 17f
+                baseGravity = 0.5f
+                baseFlap = -8.2f
+                baseMaxVelocity = 11f
+                baseMinVelocity = -9f
+                basePipeWidth = 54f
+                basePipeGap = 92f
+                basePipeSpeed = 2.9f
+                baseGroundHeight = 112f
+                basePipeSpawnDistance = 155f
+                baseBirdRadius = 17f
             }
 
             else -> {
-                gravity = 0.45f
-                flapStrength = -7.8f
-                maxVelocity = 10f
-                minVelocity = -8.5f
-                pipeWidth = 52f
-                pipeGap = 100f
-                pipeSpeed = 2.4f
-                groundHeight = 112f
-                pipeSpawnDistance = 170f
-                birdRadius = 17f
+                baseGravity = 0.45f
+                baseFlap = -7.8f
+                baseMaxVelocity = 10f
+                baseMinVelocity = -8.5f
+                basePipeWidth = 52f
+                basePipeGap = 100f
+                basePipeSpeed = 2.4f
+                baseGroundHeight = 112f
+                basePipeSpawnDistance = 170f
+                baseBirdRadius = 17f
             }
         }
+
+        val tuned = difficulty.applyTo(
+            gravity = baseGravity,
+            flapStrength = baseFlap,
+            pipeGap = basePipeGap,
+            pipeSpeed = basePipeSpeed,
+            pipeSpawnDistance = basePipeSpawnDistance,
+            maxVelocity = baseMaxVelocity,
+            minVelocity = baseMinVelocity
+        )
+
+        gravity = tuned.gravity
+        flapStrength = tuned.flapStrength
+        maxVelocity = tuned.maxVelocity
+        minVelocity = tuned.minVelocity
+        pipeWidth = basePipeWidth
+        pipeGap = tuned.pipeGap.coerceAtLeast(56f)
+        pipeSpeed = tuned.pipeSpeed
+        groundHeight = baseGroundHeight
+        pipeSpawnDistance = tuned.pipeSpawnDistance.coerceAtLeast(120f)
+        birdRadius = baseBirdRadius
     }
 
     fun getWingPhase(): Float = wingPhase

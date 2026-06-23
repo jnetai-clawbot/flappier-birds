@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jnetaol.flappierbirds.data.repository.GameRepository
+import com.jnetaol.flappierbirds.engine.Difficulty
 import com.jnetaol.flappierbirds.engine.GameEngine
 import com.jnetaol.flappierbirds.engine.GameViewport
 import com.jnetaol.flappierbirds.engine.SoundManager
@@ -43,6 +44,7 @@ fun GameScreen(
     repository: GameRepository,
     soundManager: SoundManager,
     hapticEnabled: Boolean,
+    difficulty: String,
     showFps: Boolean,
     graphicsQuality: String,
     onGameEnd: (score: Int, coins: Int, flaps: Int, obstaclesPassed: Int, durationMs: Long) -> Unit,
@@ -70,14 +72,15 @@ fun GameScreen(
         }
     }
 
-    LaunchedEffect(canvasSize, gameMode) {
+    LaunchedEffect(canvasSize, gameMode, difficulty) {
         if (canvasSize.width <= 0 || canvasSize.height <= 0) return@LaunchedEffect
 
         engine.gameMode = gameMode
+        engine.difficulty = Difficulty.fromId(difficulty)
         engine.init()
         DebugLogger.i(
             "FB-200",
-            "Game started: mode=$gameMode viewport=${canvasSize.width}x${canvasSize.height} scale=${viewport.scale}",
+            "Game started: mode=$gameMode difficulty=$difficulty viewport=${canvasSize.width}x${canvasSize.height} scale=${viewport.scale}",
             null
         )
 

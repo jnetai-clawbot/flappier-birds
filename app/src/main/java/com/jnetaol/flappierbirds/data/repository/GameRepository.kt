@@ -6,14 +6,29 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.jnetaol.flappierbirds.data.db.AppDatabase
 import com.jnetaol.flappierbirds.data.model.*
+import com.jnetaol.flappierbirds.engine.Difficulty
 import kotlinx.coroutines.flow.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "FlappierBirdsPrefs")
 
+private object SettingsKeys {
+    val DIFFICULTY = stringPreferencesKey("difficulty")
+}
+
 class GameRepository(private val context: Context) {
     private val db = AppDatabase.getInstance(context)
+
+    val difficulty: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[SettingsKeys.DIFFICULTY] ?: Difficulty.DEFAULT.id
+    }
+
+    suspend fun setDifficulty(value: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SettingsKeys.DIFFICULTY] = value
+        }
+    }
 
     val stats: Flow<GameStats?> = db.gameStatsDao().getStats()
     val achievements: Flow<List<Achievement>> = db.achievementDao().getAll()

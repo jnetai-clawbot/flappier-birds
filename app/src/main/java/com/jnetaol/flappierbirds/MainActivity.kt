@@ -14,6 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.jnetaol.flappierbirds.data.repository.GameRepository
+import com.jnetaol.flappierbirds.engine.Difficulty
 import com.jnetaol.flappierbirds.engine.SoundManager
 import com.jnetaol.flappierbirds.logger.DebugLogger
 import com.jnetaol.flappierbirds.ui.screens.about.AboutScreen
@@ -26,6 +27,8 @@ import com.jnetaol.flappierbirds.BuildConfig
 import com.jnetaol.flappierbirds.ui.theme.FlappierBirdsTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 
 class MainActivity : ComponentActivity() {
     private lateinit var repository: GameRepository
@@ -35,6 +38,7 @@ class MainActivity : ComponentActivity() {
     private val _soundVolume = MutableStateFlow(0.8f)
     private val _hapticEnabled = MutableStateFlow(true)
     private val _graphicsQuality = MutableStateFlow("high")
+    private val _difficulty = MutableStateFlow(Difficulty.DEFAULT.id)
     private val _showFps = MutableStateFlow(false)
     private val _debugMode = MutableStateFlow(false)
 
@@ -45,6 +49,12 @@ class MainActivity : ComponentActivity() {
         val app = application as FlappierBirdsApp
         repository = app.repository
         soundManager = SoundManager(this)
+
+        lifecycleScope.launch {
+            repository.difficulty.collect { savedDifficulty ->
+                _difficulty.value = savedDifficulty
+            }
+        }
 
         DebugLogger.i("FB-006", "MainActivity created", null)
 
@@ -58,6 +68,7 @@ class MainActivity : ComponentActivity() {
                     val soundVolume by _soundVolume.collectAsStateWithLifecycle()
                     val hapticEnabled by _hapticEnabled.collectAsStateWithLifecycle()
                     val graphicsQuality by _graphicsQuality.collectAsStateWithLifecycle()
+                    val difficulty by _difficulty.collectAsStateWithLifecycle()
                     val showFps by _showFps.collectAsStateWithLifecycle()
                     val debugMode by _debugMode.collectAsStateWithLifecycle()
 
@@ -86,6 +97,7 @@ class MainActivity : ComponentActivity() {
                                 repository = repository,
                                 soundManager = soundManager,
                                 hapticEnabled = hapticEnabled,
+                                difficulty = difficulty,
                                 showFps = showFps,
                                 graphicsQuality = graphicsQuality,
                                 onGameEnd = { score, coins, flaps, obstaclesPassed, durationMs ->
@@ -115,12 +127,17 @@ class MainActivity : ComponentActivity() {
                                 soundVolume = soundVolume,
                                 hapticEnabled = hapticEnabled,
                                 graphicsQuality = graphicsQuality,
+                                difficulty = difficulty,
                                 showFps = showFps,
                                 debugMode = debugMode,
                                 onMusicVolumeChange = { _musicVolume.value = it },
                                 onSoundVolumeChange = { _soundVolume.value = it },
                                 onHapticToggle = { _hapticEnabled.value = it },
                                 onGraphicsQualityChange = { _graphicsQuality.value = it },
+                                onDifficultyChange = { value ->
+                                    _difficulty.value = value
+                                    lifecycleScope.launch { repository.setDifficulty(value) }
+                                },
                                 onShowFpsToggle = { _showFps.value = it },
                                 onDebugModeToggle = { _debugMode.value = it },
                                 onNavigateBack = { navController.popBackStack() }

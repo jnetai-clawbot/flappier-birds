@@ -22,17 +22,23 @@ fun SettingsScreen(
     soundVolume: Float,
     hapticEnabled: Boolean,
     graphicsQuality: String,
+    difficulty: String,
     showFps: Boolean,
     debugMode: Boolean,
     onMusicVolumeChange: (Float) -> Unit,
     onSoundVolumeChange: (Float) -> Unit,
     onHapticToggle: (Boolean) -> Unit,
     onGraphicsQualityChange: (String) -> Unit,
+    onDifficultyChange: (String) -> Unit,
     onShowFpsToggle: (Boolean) -> Unit,
     onDebugModeToggle: (Boolean) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     var showGraphicsDialog by remember { mutableStateOf(false) }
+    var showDifficultyDialog by remember { mutableStateOf(false) }
+    val difficultyLabel = remember(difficulty) {
+        com.jnetaol.flappierbirds.engine.Difficulty.fromId(difficulty).label
+    }
 
     Scaffold(
         topBar = {
@@ -157,6 +163,27 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Icon(Icons.Default.Tune, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text("Difficulty Level", modifier = Modifier.weight(1f), color = Color.White, fontWeight = FontWeight.Medium)
+                    Text(difficultyLabel, color = Color(0xFF8B949E), fontSize = 14.sp)
+                    IconButton(onClick = { showDifficultyDialog = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Change", tint = Color(0xFF58A6FF), modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF21262D))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Icon(Icons.Default.HighQuality, contentDescription = null, tint = Color(0xFFDB6D28), modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(12.dp))
                     Text("Graphics Quality", modifier = Modifier.weight(1f), color = Color.White, fontWeight = FontWeight.Medium)
@@ -235,6 +262,17 @@ fun SettingsScreen(
             onDismiss = { showGraphicsDialog = false }
         )
     }
+
+    if (showDifficultyDialog) {
+        DifficultyDialog(
+            current = difficulty,
+            onSelect = { level ->
+                showDifficultyDialog = false
+                onDifficultyChange(level)
+            },
+            onDismiss = { showDifficultyDialog = false }
+        )
+    }
 }
 
 @Composable
@@ -266,6 +304,49 @@ private fun GraphicsQualityDialog(
                             quality.replaceFirstChar { it.uppercase() },
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelected) Color.White else Color(0xFF8B949E)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color(0xFF8B949E))
+            }
+        }
+    )
+}
+
+@Composable
+private fun DifficultyDialog(
+    current: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(24.dp),
+        containerColor = Color(0xFF161B22),
+        title = {
+            Text("Difficulty Level", fontWeight = FontWeight.Bold, color = Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        },
+        text = {
+            Column {
+                com.jnetaol.flappierbirds.engine.Difficulty.entries.forEach { level ->
+                    val isSelected = level.id == current
+                    Button(
+                        onClick = { onSelect(level.id) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isSelected) Color(0xFFFFD700) else Color(0xFF21262D)
+                        )
+                    ) {
+                        Text(
+                            level.label,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) Color(0xFF0D1117) else Color(0xFF8B949E)
                         )
                     }
                 }
